@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Electron+React app</title>
+    </head>
+    <body>
+        <script>
+            function toggleDevTools() {
+                try {
+                    require('electron').remote.getCurrentWindow().toggleDevTools();
+                } catch(e) {
+                    //alert(e);
+                }
+            }
+
+        </script>
+        <div>
+            <button onclick="toggleDevTools()">Toggle dev tools</button>
+        </div>
+        <canvas id="canvas" style="background-color: #000; width: 100%; height: 100%"></canvas>
+        <!--
+        <script src="src/webgl.js">
+        -->
+        </script>
+        <div id="drawing-area"></div>
+        <div id="root"></div>
+        <!--
+        <script src="app.js"></script>
+        -->
+    </body>
+</html>

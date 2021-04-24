@@ -1,0 +1,97 @@
+#include <napi.h>
+#include <libraw/libraw.h>
+#include <string>
+
+//using namespace Napi;
+
+Napi::Value loadRaw(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    if (info.Length() < 1) {
+        Napi::TypeError::New(env, "Wrong number of arguments")
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    if (!info[0].IsString()) {
+        Napi::TypeError::New(env, "Wrong arguments").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    std::string filename = info[0].As<Napi::String>();
+
+    LibRaw raw;
+    raw.imgdata.params.output_color = 5;
+    raw.imgdata.params.output_bps = 16;
+    raw.imgdata.params.user_qual = 3;
+    raw.imgdata.params.highlight = 0;
+    raw.imgdata.params.no_auto_bright = 1;
+    //raw.imgdata.params.no_auto_scale = 1; //
+    //raw.imgdata.params.fbdd_noiserd = 2;
+    raw.imgdata.params.threshold = 100;
+    
+    /*
+    raw.imgdata.params.use_camera_wb = 0;
+    raw.imgdata.params.use_camera_matrix = 0;
+    */
+
+    //raw.imgdata.params.auto_bright_thr = 0.0001;
+    
+    raw.imgdata.params.gamm[0] = 1.0; //1.0 / 2.4;
+    raw.imgdata.params.gamm[1] = 1.0; //12.92;
+
+    //raw.imgdata.params.aber[0] = 1.001;
+    //raw.imgdata.params.aber[1] = 1.001;
+    
+    raw.open_file(filename.c_str());
+    raw.unpack();
+    raw.dcraw_process();
+    auto * mi = raw.dcraw_make_mem_image();
+    
+    //Image img(mi->width, mi->height);
+
+    /* TODO: think of it!!! Maybe new Canons are kind unusual?
+    int srcPixelSize = mi->colors * (mi->bits / 8);
+    int srcRedOffset = 0;
+    int srcGreenOffset = (mi->bits / 8);
+    int srcBlueOffset = 2 * (mi->bits / 8);
+    */
+    float q = 1.0 / ((1 << mi->bits) - 1);
+
+    auto buf = Napi::Buffer<float>::New(env, mi->width * mi->height * 3);
+    float * data = buf.Data();
+
+    for (int row = 0; row < mi->height; row++) {
+        int rowOrigin = row * mi->width;
+        int srcRowOrigin = row * mi->width * mi->colors * (mi->bits / 8);
+        int srcOffset = 0;
+        for (int col = 0; col < mi->width; col++, srcOffset += 6) {
+            unsigned short * srcPixel =
+                (unsigned short *) (mi->data + srcRowOrigin + srcOffset);
+            int pixelOrigin = (rowOrigin + col) * 3;
+            data[pixelOrigin + 0] = q * srcPixel[0];
+            data[pixelOrigin + 1] = q * srcPixel[1];
+            data[pixelOrigin + 2] = q * srcPixel[2];
+        }
+    }
+    
+    raw.dcraw_clear_mem(mi);
+    return buf;
+}
+
+/*
+Napi::String Method(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    return Napi::String::New(env, "world");
+}
+*/
+
+Napi::Object Init(Napi::Env env, Napi::Object exports)
+{
+    exports.Set(Napi::String::New(env, "loadRaw"),
+                Napi::Function::New(env, loadRaw));
+    return exports;
+}
+
+NODE_API_MODULE(addon, Init)
