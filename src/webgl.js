@@ -1,20 +1,22 @@
-const { loadRaw } = require('./libraw');
-
-const fs = require('fs');
-console.log(fs.readdirSync('.'));
+//const { loadRaw } = require('./libraw');
+import { loadRaw } from './libraw';
 
 const vertexShaderSource = `#version 300 es
      
     // an attribute is an input (in) to a vertex shader.
     // It will receive data from a buffer
     in vec4 a_position;
-     
+    in vec2 a_texCoord;
+
+    out vec2 v_texCoord;
+
     // all shaders have a main function
     void main() {
-     
       // gl_Position is a special variable a vertex shader
       // is responsible for setting
       gl_Position = a_position;
+
+      v_texCoord = a_texCoord;
     }
     `;
 
@@ -23,13 +25,19 @@ const fragmentShaderSource = `#version 300 es
     // fragment shaders don't have a default precision so we need
     // to pick one. highp is a good default. It means "high precision"
     precision highp float;
+
+    // texture
+    uniform sampler2D u_image;
+
+    // texCoord passed from the vertex shader
+    in vec2 v_texCoord;
      
     // we need to declare an output for the fragment shader
     out vec4 outColor;
      
     void main() {
       // Just set the output to a constant reddish-purple
-      outColor = vec4(1, 0.0, 0.5, 1);
+      outColor = texture(u_image, v_texCoord); //vec4(1, 0.0, 0.5, 1);
     }
     `;
 
@@ -71,14 +79,16 @@ function resizeCanvasToDisplaySize(canvas) {
     if (needResize) {
         // Make the canvas the same size
         canvas.width  = displayWidth;
-        canvas.height = displayHeight;
+        canvas.height = displayWidth * 3 / 4; //displayHeight;
     }
 
     return needResize;
 }
 
 function main() {
-    console.log(loadRaw('/home/supersasha/Downloads/P7250010.ORF'));
+    //console.log(loadRaw('/home/supersasha/Downloads/P7250010.ORF'));
+
+    const img = loadRaw('/home/supersasha/Downloads/P7250010.ORF', { colorSpace: "xyz" });
 
     const canvas = document.querySelector('canvas');
     const gl = canvas.getContext('webgl2');
@@ -90,7 +100,13 @@ function main() {
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
     const program = createProgram(gl, vertexShader, fragmentShader);
+
+    // vertex data
     const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
+    const texCoordAttributeLocation = gl.getAttribLocation(program, "a_texCoord");
+
+    // uniforms
+    const imageLocation = gl.getUniformLocation(program, "u_image");
 
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -117,7 +133,52 @@ function main() {
     const offset = 0;        // start at the beginning of the buffer
     gl.vertexAttribPointer(
         positionAttributeLocation, size, type, normalize, stride, offset);
-    
+
+    // provide texture coordinates for the rectangle.
+    var texCoordBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+        0, 1,
+        0, 0,
+        1, 0,
+        0, 1,
+        1, 1,
+        1, 0,
+    ]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(texCoordAttributeLocation);
+    gl.vertexAttribPointer(
+        texCoordAttributeLocation, size, type, normalize, stride, offset)
+
+    // Create a texture.
+    var texture = gl.createTexture();
+
+    // make unit 0 the active texture uint
+    // (ie, the unit all other texture commands will affect
+    gl.activeTexture(gl.TEXTURE0 + 0);
+
+    // Bind it to texture unit 0' 2D bind point
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    // Set the parameters so we don't need mips and so we're not filtering
+    // and we don't repeat
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    // Upload the image into the texture.
+    gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGB32F,
+        img.width, //5200, // width
+        img.height, //3904, // height
+        0,
+        gl.RGB,
+        gl.FLOAT,
+        new Float32Array(img.image.buffer)
+    );
+
     function draw() {
         resizeCanvasToDisplaySize(gl.canvas);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -132,10 +193,15 @@ function main() {
         // Bind the attribute/buffer set we want.
         gl.bindVertexArray(vao);
 
+        // Tell the shader to get the texture from texture unit 0
+        gl.uniform1i(imageLocation, 0);
+
         const primitiveType = gl.TRIANGLES;
         const drawOffset = 0;
-        const count = 3;
+        const count = 6;
+        const t0 = Date.now();
         gl.drawArrays(primitiveType, drawOffset, count);
+        console.log('dT =', Date.now() - t0);
     }
 
     draw();

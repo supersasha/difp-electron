@@ -18,10 +18,33 @@ Napi::Value loadRaw(const Napi::CallbackInfo& info)
         return env.Null();
     }
 
+    int outputColor = 5;
+    if (info.Length() == 2 && info[1].IsObject()) {
+        auto options = info[1].As<Napi::Object>();
+        if (options.Has("colorSpace")) {
+            auto colorSpace = std::string(options.Get("colorSpace").As<Napi::String>());
+            if (colorSpace == "raw") {
+                outputColor = 0;
+            } else if (colorSpace == "srgb") {
+                outputColor = 1;
+            } else if (colorSpace == "adobe") {
+                outputColor = 2;
+            } else if (colorSpace == "wide") {
+                outputColor = 3;
+            } else if (colorSpace == "prophoto") {
+                outputColor = 4;
+            } else if (colorSpace == "xyz") {
+                outputColor = 5;
+            } else if (colorSpace == "aces") {
+                outputColor = 6;
+            }
+        }
+    }
+
     std::string filename = info[0].As<Napi::String>();
 
     LibRaw raw;
-    raw.imgdata.params.output_color = 5;
+    raw.imgdata.params.output_color = outputColor;
     raw.imgdata.params.output_bps = 16;
     raw.imgdata.params.user_qual = 3;
     raw.imgdata.params.highlight = 0;
@@ -74,18 +97,15 @@ Napi::Value loadRaw(const Napi::CallbackInfo& info)
             data[pixelOrigin + 2] = q * srcPixel[2];
         }
     }
+
+    Napi::Object obj = Napi::Object::New(env);
+    obj.Set("image", buf);
+    obj.Set("width", Napi::Number::New(env, mi->width));
+    obj.Set("height", Napi::Number::New(env, mi->height));
     
     raw.dcraw_clear_mem(mi);
-    return buf;
+    return obj;
 }
-
-/*
-Napi::String Method(const Napi::CallbackInfo& info)
-{
-    Napi::Env env = info.Env();
-    return Napi::String::New(env, "world");
-}
-*/
 
 Napi::Object Init(Napi::Env env, Napi::Object exports)
 {
