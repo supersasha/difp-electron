@@ -1,45 +1,12 @@
-//const { loadRaw } = require('./libraw');
 import { loadRaw } from './libraw';
+import { initUniform } from './glsl-structures.js';
+const fs = require('fs');
 
-const vertexShaderSource = `#version 300 es
-     
-    // an attribute is an input (in) to a vertex shader.
-    // It will receive data from a buffer
-    in vec4 a_position;
-    in vec2 a_texCoord;
+const vertexShaderSource = fs.readFileSync('./src/vs.glsl');
+const fragmentShaderSource = fs.readFileSync('./src/fs.glsl');
 
-    out vec2 v_texCoord;
-
-    // all shaders have a main function
-    void main() {
-      // gl_Position is a special variable a vertex shader
-      // is responsible for setting
-      gl_Position = a_position;
-
-      v_texCoord = a_texCoord;
-    }
-    `;
-
-const fragmentShaderSource = `#version 300 es
-     
-    // fragment shaders don't have a default precision so we need
-    // to pick one. highp is a good default. It means "high precision"
-    precision highp float;
-
-    // texture
-    uniform sampler2D u_image;
-
-    // texCoord passed from the vertex shader
-    in vec2 v_texCoord;
-     
-    // we need to declare an output for the fragment shader
-    out vec4 outColor;
-     
-    void main() {
-      // Just set the output to a constant reddish-purple
-      outColor = texture(u_image, v_texCoord); //vec4(1, 0.0, 0.5, 1);
-    }
-    `;
+const spectrumData = JSON.parse(fs.readFileSync('./data/spectrum-d55-4.json'));
+const profileData = JSON.parse(fs.readFileSync('./data/b29-50d.json'));
 
 function createShader(gl, type, source) {
     var shader = gl.createShader(type);
@@ -105,8 +72,11 @@ function main() {
     const positionAttributeLocation = gl.getAttribLocation(program, "a_position");
     const texCoordAttributeLocation = gl.getAttribLocation(program, "a_texCoord");
 
+    //initUniform(gl, program, spectrumData, 'u_spectrumData');
+
     // uniforms
     const imageLocation = gl.getUniformLocation(program, "u_image");
+    console.log('imageLocation:', imageLocation);
 
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -180,6 +150,7 @@ function main() {
     );
 
     function draw() {
+        const t0 = Date.now();
         resizeCanvasToDisplaySize(gl.canvas);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
@@ -195,11 +166,21 @@ function main() {
 
         // Tell the shader to get the texture from texture unit 0
         gl.uniform1i(imageLocation, 0);
+        
+        initUniform(gl, program, spectrumData, 'u_spectrumData');
+        initUniform(gl, program, profileData, 'u_profileData');
+        initUniform(gl, program, {
+            color_corr: [0.09, 0.01, 0.0],
+            film_exposure: -1.57,
+            paper_exposure: 0.0,
+            paper_contrast: 1.80,
+            curve_smoo: 0.15,
+            mode: '#0',
+        }, 'u_userOptions');
 
         const primitiveType = gl.TRIANGLES;
         const drawOffset = 0;
         const count = 6;
-        const t0 = Date.now();
         gl.drawArrays(primitiveType, drawOffset, count);
         console.log('dT =', Date.now() - t0);
     }

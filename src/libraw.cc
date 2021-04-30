@@ -2,8 +2,6 @@
 #include <libraw/libraw.h>
 #include <string>
 
-//using namespace Napi;
-
 Napi::Value loadRaw(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
