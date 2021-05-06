@@ -17,6 +17,7 @@ Napi::Value loadRaw(const Napi::CallbackInfo& info)
     }
 
     int outputColor = 5;
+    bool halfSize = 0;
     if (info.Length() == 2 && info[1].IsObject()) {
         auto options = info[1].As<Napi::Object>();
         if (options.Has("colorSpace")) {
@@ -36,6 +37,9 @@ Napi::Value loadRaw(const Napi::CallbackInfo& info)
             } else if (colorSpace == "aces") {
                 outputColor = 6;
             }
+        }
+        if (options.Has("halfSize")) {
+            halfSize = options.Get("halfSize").As<Napi::Boolean>();
         }
     }
 
@@ -64,6 +68,8 @@ Napi::Value loadRaw(const Napi::CallbackInfo& info)
     //raw.imgdata.params.aber[0] = 1.001;
     //raw.imgdata.params.aber[1] = 1.001;
     
+    raw.imgdata.params.half_size = halfSize ? 1 : 0;
+
     raw.open_file(filename.c_str());
     raw.unpack();
     raw.dcraw_process();

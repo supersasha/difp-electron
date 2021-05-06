@@ -1,3 +1,5 @@
+// NOTE: this file is not used anymore. Only for reference
+
 import { loadRaw } from './libraw';
 import { initUniform } from './glsl-structures.js';
 const fs = require('fs');
@@ -141,8 +143,8 @@ function main() {
         gl.TEXTURE_2D,
         0,
         gl.RGB32F,
-        img.width, //5200, // width
-        img.height, //3904, // height
+        img.width,
+        img.height,
         0,
         gl.RGB,
         gl.FLOAT,

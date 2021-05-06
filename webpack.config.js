@@ -9,7 +9,7 @@ module.exports = {
     },
     entry: {
         react: './src/index.js',
-        webgl: './src/webgl.js',
+        //webgl: './src/webgl.js',
     },
     output: {
         path: path.resolve(__dirname, 'dist'),

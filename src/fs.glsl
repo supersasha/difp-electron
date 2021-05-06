@@ -126,7 +126,7 @@ vec4 xyz_to_srgb_scalar(vec4 c)
         b = 1.0;
     }
 
-    return vec4(r, g, b, 0);
+    return vec4(r, g, b, 1.0);
 }
 
 float sigma(float x, float ymin, float ymax, float gamma, float bias, float smoo)
@@ -296,12 +296,11 @@ void main() {
     // Just set the output to a constant reddish-purple
     vec4 xyz = texture(u_image, v_texCoord);
 
-    // REMOVE the next 2 lines later
+    // REMOVE the next 3 lines later
     /*
     float kkk = u_spectrumData.wp[1] / u_spectrumData.wp[1];
     kkk *= u_profileData.couplers[0].a[0] / u_profileData.couplers[0].a[0];
     kkk *= u_userOptions.curve_smoo / u_userOptions.curve_smoo;
     */
-    outColor = process_photo(100.0 * xyz /** kkk*/); 
-        //xyz_to_srgb_scalar(100.0 * xyz * kkk); //vec4(1, 0.0, 0.5, 1);
+    outColor = process_photo(100.0 * xyz); 
 }
