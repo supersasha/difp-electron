@@ -2,6 +2,7 @@ import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button, Switch, Slider } from 'antd';
 import { Photo } from './photo';
+import { Plot } from './plot';
 import 'antd/dist/antd.css';
 
 const { dialog, BrowserWindow } = require('electron').remote;
@@ -121,6 +122,7 @@ function App() {
                         }}
                     />
                 </div>
+                <Plot />
             </div>
         </div>
     );

@@ -1,5 +1,7 @@
 #version 300 es
-     
+// ^ MUST be the first line
+
+
 // an attribute is an input (in) to a vertex shader.
 // It will receive data from a buffer
 in vec4 a_position;

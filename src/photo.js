@@ -89,6 +89,15 @@ export function Photo() {
         const canvas = ref.current;
         const gl = canvas.getContext('webgl2');
 
+        var debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        var vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+        var renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+
+        console.log(vendor);
+        console.log(renderer);
+
+        console.log(gl.getExtension('OES_texture_float_linear'));
+
         const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
         const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
         const _program = createProgram(gl, vertexShader, fragmentShader);
@@ -114,8 +123,8 @@ export function Photo() {
 
         const vao = gl.createVertexArray();
         gl.bindVertexArray(vao);
-        gl.enableVertexAttribArray(positionAttributeLocation);
 
+        gl.enableVertexAttribArray(positionAttributeLocation);
         const size = 2;          // 2 components per iteration
         const type = gl.FLOAT;   // the data is 32bit floats
         const normalize = false; // don't normalize the data
@@ -179,8 +188,8 @@ export function Photo() {
         // and we don't repeat
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
         // Upload the image into the texture.
         gl.texImage2D(
