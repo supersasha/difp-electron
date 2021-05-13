@@ -53,5 +53,8 @@ module.exports = {
         new HtmlWebpackPlugin({
             template: 'src/index.html'
         })
-    ]
+    ],
+    devServer: {
+        port: 8033,
+    },
 }

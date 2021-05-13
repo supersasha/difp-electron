@@ -15,7 +15,7 @@ function createWindow () {
     win.webContents.openDevTools();
     win.removeMenu();
     //win.loadFile('index.html');
-    win.loadURL('http://localhost:8080');
+    win.loadURL('http://localhost:8033');
 }
 
 app.whenReady().then(createWindow);
