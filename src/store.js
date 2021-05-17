@@ -8,7 +8,10 @@ const initialState = {
         film_exposure: -1.6,
         paper_contrast: 1.8,
         curve_smoo: 0.15
-    }
+    },
+    blurRadius: 0,
+    maskThreshold: 0.9,
+    maskDensity: 0,
 };
 
 const rootSlice = createSlice({
@@ -33,7 +36,17 @@ const rootSlice = createSlice({
 
         setSmoothness(state, action) {
             state.userOptions.curve_smoo = action.payload;
-        }
+        },
+
+        setBlurRadius(state, action) {
+            state.blurRadius = action.payload;
+        },
+        setMaskThreshold(state, action) {
+            state.maskThreshold = action.payload;
+        },
+        setMaskDensity(state, action) {
+            state.maskDensity = action.payload;
+        },
     }
 });
 

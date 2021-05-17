@@ -37,6 +37,7 @@
     "antd": "^4.15.4",
     "bindings": "^1.5.0",
     "konva": "^7.2.5",
+    "math-erf": "^1.0.0",
     "node-addon-api": "^3.1.0",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",

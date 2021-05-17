@@ -58,8 +58,12 @@ struct UserOptions
 
 uniform UserOptions u_userOptions;
 
+uniform float u_maskThreshold;
+uniform float u_maskDensity;
+
 // texture
 uniform sampler2D u_image;
+uniform sampler2D u_mask;
 
 // texCoord passed from the vertex shader
 in vec2 v_texCoord;
@@ -163,14 +167,25 @@ const int FILM_DEV = 5;
 const int PAPER_EXPOSURE = 6;
 const int FILM_NEG_LOG_EXP = 7;
 const int PAPER_NEG_LOG_EXP = 8;
+const int MASK = 9;
+const int MASKED = 10;
 
 vec4 log10(vec4 x) {
+    return log(x) / log(10.0);
+}
+
+float log10(float x) {
     return log(x) / log(10.0);
 }
 
 vec4 process_photo(vec4 xyz) {
     if (u_userOptions.mode == IDENTITY) {
         return xyz_to_srgb_scalar(xyz * pow(10.0, u_userOptions.film_exposure));
+    }
+
+    float mask = 0.0;
+    if (u_userOptions.mode == MASKED) {
+        mask = (texture(u_mask, vec2(v_texCoord.x, 1.0-v_texCoord.y))).x * u_maskDensity;
     }
 
 #define B(i, j) (u_spectrumData.base[i].a[j])
@@ -213,7 +228,7 @@ vec4 process_photo(vec4 xyz) {
         return exposure * pow(10.0, u_userOptions.film_exposure);
     }
 
-    vec4 H = log10(exposure) + u_userOptions.film_exposure;
+    vec4 H = log10(exposure) + u_userOptions.film_exposure + mask;
 
     if (u_userOptions.mode == FILM_NEG_LOG_EXP) {
         return vec4(
@@ -264,6 +279,7 @@ vec4 process_photo(vec4 xyz) {
         return exposure * pow(10.0, u_userOptions.paper_exposure);
     }
     
+    float L = 0.0;
     if (u_userOptions.mode != NEGATIVE) {
         H = log10(exposure) + u_userOptions.paper_exposure;
     
@@ -287,11 +303,18 @@ vec4 process_photo(vec4 xyz) {
             xyz1.x += u_profileData.mtx_refl[0].a[i] * trans;
             xyz1.y += u_profileData.mtx_refl[1].a[i] * trans;
             xyz1.z += u_profileData.mtx_refl[2].a[i] * trans;
+
+            L += u_profileData.mtx_refl[1].a[i];
         }
     }
-    
+
     // Setting output color sRGB
-    return xyz_to_srgb_scalar(xyz1 * 1.0);
+    if (u_userOptions.mode == MASK) {
+        float l = log10(L / xyz.y);
+        return step(vec4(u_maskThreshold), vec4(l));
+    } else {
+        return xyz_to_srgb_scalar(xyz1 * 1.0);
+    } 
 }
 
 void main() {
@@ -299,10 +322,5 @@ void main() {
     vec4 xyz = texture(u_image, v_texCoord);
 
     // REMOVE the next 3 lines later
-    /*
-    float kkk = u_spectrumData.wp[1] / u_spectrumData.wp[1];
-    kkk *= u_profileData.couplers[0].a[0] / u_profileData.couplers[0].a[0];
-    kkk *= u_userOptions.curve_smoo / u_userOptions.curve_smoo;
-    */
     outColor = process_photo(100.0 * xyz); 
 }

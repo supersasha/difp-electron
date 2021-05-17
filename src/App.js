@@ -19,11 +19,14 @@ function App() {
     const dispatch = useDispatch();
     const imagePath = useSelector(state => state.imagePath);
     const userOptions = useSelector(state => state.userOptions);
+    const blurRadius = useSelector(state => state.blurRadius);
+    const maskThreshold = useSelector(state => state.maskThreshold);
+    const maskDensity = useSelector(state => state.maskDensity);
 
     return (
         <div style={{display: 'flex', width: '100%'}}>
             <Photo />
-            <div>
+            <div style={{backgroundColor: '#eee', padding: '20px'}}>
                 <div>
                     <div>{imagePath || 'No image loaded'}</div>
                     <Button onClick={toggleDevTools}>Toggle dev tools</Button>
@@ -117,6 +120,45 @@ function App() {
                         onChange={value => {
                             dispatch({
                                 type: 'main/setSmoothness',
+                                payload: value,
+                            })
+                        }}
+                    />
+                    <div>Mask Blur</div>
+                    <Slider
+                        min={0}
+                        max={10}
+                        step={0.01}
+                        value={blurRadius}
+                        onChange={value => {
+                            dispatch({
+                                type: 'main/setBlurRadius',
+                                payload: value,
+                            })
+                        }}
+                    />
+                    <div>Mask Threshold</div>
+                    <Slider
+                        min={0}
+                        max={5}
+                        step={0.1}
+                        value={maskThreshold}
+                        onChange={value => {
+                            dispatch({
+                                type: 'main/setMaskThreshold',
+                                payload: value,
+                            })
+                        }}
+                    />
+                    <div>Mask Density</div>
+                    <Slider
+                        min={0}
+                        max={3}
+                        step={0.01}
+                        value={maskDensity}
+                        onChange={value => {
+                            dispatch({
+                                type: 'main/setMaskDensity',
                                 payload: value,
                             })
                         }}
