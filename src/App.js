@@ -22,6 +22,8 @@ function App() {
     const blurRadius = useSelector(state => state.blurRadius);
     const maskThreshold = useSelector(state => state.maskThreshold);
     const maskDensity = useSelector(state => state.maskDensity);
+    const noiseSigma = useSelector(state => state.noiseSigma);
+    const noiseBlur = useSelector(state => state.noiseBlur);
 
     return (
         <div style={{display: 'flex', width: '100%'}}>
@@ -141,7 +143,7 @@ function App() {
                     <Slider
                         min={0}
                         max={5}
-                        step={0.1}
+                        step={0.01}
                         value={maskThreshold}
                         onChange={value => {
                             dispatch({
@@ -159,6 +161,32 @@ function App() {
                         onChange={value => {
                             dispatch({
                                 type: 'main/setMaskDensity',
+                                payload: value,
+                            })
+                        }}
+                    />
+                    <div>Noise Sigma</div>
+                    <Slider
+                        min={0}
+                        max={0.2}
+                        step={0.001}
+                        value={noiseSigma}
+                        onChange={value => {
+                            dispatch({
+                                type: 'main/setNoiseSigma',
+                                payload: value,
+                            })
+                        }}
+                    />
+                    <div>Noise Blur</div>
+                    <Slider
+                        min={0}
+                        max={0.3}
+                        step={0.001}
+                        value={noiseBlur}
+                        onChange={value => {
+                            dispatch({
+                                type: 'main/setNoiseBlur',
                                 payload: value,
                             })
                         }}

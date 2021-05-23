@@ -64,6 +64,7 @@ uniform float u_maskDensity;
 // texture
 uniform sampler2D u_image;
 uniform sampler2D u_mask;
+uniform sampler2D u_noise;
 
 // texCoord passed from the vertex shader
 in vec2 v_texCoord;
@@ -187,6 +188,7 @@ vec4 process_photo(vec4 xyz) {
     if (u_userOptions.mode == MASKED) {
         mask = (texture(u_mask, vec2(v_texCoord.x, 1.0-v_texCoord.y))).x * u_maskDensity;
     }
+    float noise = (texture(u_noise, vec2(v_texCoord.x, 1.0-v_texCoord.y))).x;
 
 #define B(i, j) (u_spectrumData.base[i].a[j])
 #define T(i, j) (u_spectrumData.tri_to_v_mtx[i].a[j])
@@ -263,6 +265,7 @@ vec4 process_photo(vec4 xyz) {
                                  + u_profileData.couplers[1].a[i] * (1.0 - dev.y / 2.5)
                                  + u_profileData.couplers[2].a[i] * (1.0 - dev.z / 2.5);
         float developed = developed_dyes + developed_couplers;
+        developed = developed + (1.0 - developed / 4.0) * noise;
         float trans = pow(10.0, -developed);
         if (u_userOptions.mode == NEGATIVE) {
             xyz1.x += u_profileData.mtx_refl[0].a[i] * trans;
@@ -318,9 +321,6 @@ vec4 process_photo(vec4 xyz) {
 }
 
 void main() {
-    // Just set the output to a constant reddish-purple
     vec4 xyz = texture(u_image, v_texCoord);
-
-    // REMOVE the next 3 lines later
     outColor = process_photo(100.0 * xyz); 
 }

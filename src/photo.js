@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Program, Texture, Framebuffer } from './glw';
 import { loadRaw } from './libraw';
+
 const fs = require('fs');
 const erf = require('math-erf');
 
@@ -11,37 +12,11 @@ const fragmentShaderSource = fs.readFileSync('./shaders/main.frag');
 const blurVertexShader = fs.readFileSync('./shaders/blur.vert');
 const blurFragmentShader = fs.readFileSync('./shaders/blur.frag');
 
+const noiseVertexShader = fs.readFileSync('./shaders/noise.vert');
+const noiseFragmentShader = fs.readFileSync('./shaders/noise.frag');
+
 const spectrumData = JSON.parse(fs.readFileSync('./data/spectrum-d55-4.json'));
 const profileData = JSON.parse(fs.readFileSync('./data/b29-50d.json'));
-
-/*
-function blurKernel(rr, w, h) {
-    if (rr === 0) {
-        return {
-            data: [1],
-            size: '#1',
-        };
-    }
-    const s = rr * Math.min(w, h) / 100;
-    const r = Math.ceil(3 * s);
-    let d = [];
-    const a = 1 / (s * Math.sqrt(2*Math.PI));
-    if (a > 0.75) {
-        return {
-            data: [1],
-            size: '#1',
-        };
-    }
-    for (let x = -r; x <= r; x++) {
-        const y = x / s; 
-        d.push(a * Math.exp(-y*y/2));
-    }
-    return {
-        data: d,
-        size: '#' + (2*r+1),
-    };
-}
-*/
 
 function blurKernel(rr, w, h) {
     if (rr === 0) {
@@ -64,7 +39,6 @@ function blurKernel(rr, w, h) {
         size: '#' + (2*r+1),
     };
 }
-
 
 function resizeCanvasToDisplaySize(canvas) {
     // Lookup the size the browser is displaying the canvas in CSS pixels.
@@ -91,6 +65,8 @@ export function Photo() {
     const blurRadius = useSelector(state => state.blurRadius);
     const maskThreshold = useSelector(state => state.maskThreshold);
     const maskDensity = useSelector(state => state.maskDensity);
+    const noiseSigma = useSelector(state => state.noiseSigma);
+    const noiseBlur = useSelector(state => state.noiseBlur);
 
     const [darkroom, setDarkroom] = useState();
 
@@ -151,42 +127,91 @@ export function Photo() {
             [1, 1],
             [1, 0],
         ]);
-        blurProg.setUniform('u_kernel', blurKernel(blurRadius, gl.canvas.width, gl.canvas.height));
+
+        const noiseProg = new Program(gl, noiseVertexShader, noiseFragmentShader);
+        noiseProg.setAttribute('a_position', [
+            [-1, -1],
+            [-1,  1],
+            [ 1,  1],
+            [-1, -1],
+            [ 1, -1],
+            [ 1,  1],
+        ]);
+        noiseProg.setAttribute('a_texCoord', [
+            [0, 1],
+            [0, 0],
+            [1, 0],
+            [0, 1],
+            [1, 1],
+            [1, 0],
+        ]);
 
         const _darkroom = {
             gl,
             mainProg,
             blurProg,
+            noiseProg,
             image,
+            maskBlur: 0.0,
+            noiseBlur: 0.0,
             run: function() {
-                const tex = new Texture(gl, 1);
-                tex.setData(gl.canvas.width, gl.canvas.height);
-                const fb = new Framebuffer(gl, tex);
+                const texNoise = new Texture(gl, 1);
+                texNoise.setData(gl.canvas.width, gl.canvas.height);
+                const fbNoise = new Framebuffer(gl, texNoise);
+
+                this.noiseProg.run(fbNoise);
+
+                const texMask = new Texture(gl, 2);
+                texMask.setData(gl.canvas.width, gl.canvas.height);
+                const fbMask = new Framebuffer(gl, texMask);
 
                 this.mainProg.setUniform('u_userOptions.mode', '#9');
-                this.mainProg.run(fb);
+                this.mainProg.run(fbMask);
 
-                const tex2 = new Texture(gl, 2);
-                tex2.setData(gl.canvas.width, gl.canvas.height);
-                const fb2 = new Framebuffer(gl, tex2);
+                const texHorzBlurMask = new Texture(gl, 3);
+                texHorzBlurMask.setData(gl.canvas.width, gl.canvas.height);
+                const fbHorzBlurMask = new Framebuffer(gl, texHorzBlurMask);
+                
+                let kernel = blurKernel(
+                    this.maskBlur, this.gl.canvas.width, this.gl.canvas.height
+                );
+                this.blurProg.setUniform('u_kernel', kernel);
 
                 this.blurProg.setUniform('u_vert', false);
-                this.blurProg.setUniform('u_image', tex);
-                this.blurProg.run(fb2);
+                this.blurProg.setUniform('u_image', texMask);
+                this.blurProg.run(fbHorzBlurMask);
 
-                const tex3 = new Texture(gl, 3);
-                tex3.setData(gl.canvas.width, gl.canvas.height);
-                const fb3 = new Framebuffer(gl, tex3);
+                const texVertBlurMask = new Texture(gl, 4);
+                texVertBlurMask.setData(gl.canvas.width, gl.canvas.height);
+                const fbVertBlurMask = new Framebuffer(gl, texVertBlurMask);
 
                 this.blurProg.setUniform('u_vert', true);
-                this.blurProg.setUniform('u_image', tex2);
-                this.blurProg.run(/*fb3*/);
+                this.blurProg.setUniform('u_image', texHorzBlurMask);
+                this.blurProg.run(fbVertBlurMask);
 
-                /*
-                this.mainProg.setUniform('u_mask', tex3);
+                kernel = blurKernel(
+                    this.noiseBlur, this.gl.canvas.width, this.gl.canvas.height
+                );
+                this.blurProg.setUniform('u_kernel', kernel);
+
+                const texHorzBlurNoise = new Texture(gl, 5);
+                texHorzBlurNoise.setData(gl.canvas.width, gl.canvas.height);
+                const fbHorzBlurNoise = new Framebuffer(gl, texHorzBlurNoise);
+                this.blurProg.setUniform('u_vert', false);
+                this.blurProg.setUniform('u_image', texNoise);
+                this.blurProg.run(fbHorzBlurNoise);
+
+                const texVertBlurNoise = new Texture(gl, 6);
+                texVertBlurNoise.setData(gl.canvas.width, gl.canvas.height);
+                const fbVertBlurNoise = new Framebuffer(gl, texVertBlurNoise);
+                this.blurProg.setUniform('u_vert', true);
+                this.blurProg.setUniform('u_image', texHorzBlurNoise);
+                this.blurProg.run(fbVertBlurNoise);
+
+                this.mainProg.setUniform('u_mask', texVertBlurMask);
+                this.mainProg.setUniform('u_noise', texVertBlurNoise);
                 this.mainProg.setUniform('u_userOptions.mode', '#10');
                 this.mainProg.run();
-                */
             }
         };
 
@@ -205,6 +230,7 @@ export function Photo() {
         }
         const img = loadRaw(imagePath, { colorSpace: "xyz", halfSize: false });
         const texture = darkroom.image;
+        console.log(img);
         texture.setData(img.width, img.height, new Float32Array(img.image.buffer), {
             minFilter: texture.gl.LINEAR,
             magFilter: texture.gl.LINEAR,
@@ -217,10 +243,10 @@ export function Photo() {
             darkroom.mainProg.setUniform('u_userOptions', userOpts);
             darkroom.mainProg.setUniform('u_maskThreshold', maskThreshold);
             darkroom.mainProg.setUniform('u_maskDensity', maskDensity);
-            const kernel = blurKernel(
-                blurRadius, darkroom.gl.canvas.width, darkroom.gl.canvas.height
-            );
-            darkroom.blurProg.setUniform('u_kernel', kernel);
+            //darkroom.noiseProg.setUniform('u_seed', '#0');
+            darkroom.noiseProg.setUniform('u_sigma', noiseSigma);
+            darkroom.maskBlur = blurRadius;
+            darkroom.noiseBlur = noiseBlur;
             darkroom.run();
         }
     });

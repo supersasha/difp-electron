@@ -12,6 +12,8 @@ const initialState = {
     blurRadius: 0,
     maskThreshold: 0.9,
     maskDensity: 0,
+    noiseSigma: 0.01,
+    noiseBlur: 0.046,
 };
 
 const rootSlice = createSlice({
@@ -46,6 +48,13 @@ const rootSlice = createSlice({
         },
         setMaskDensity(state, action) {
             state.maskDensity = action.payload;
+        },
+
+        setNoiseSigma(state, action) {
+            state.noiseSigma = action.payload;
+        },
+        setNoiseBlur(state, action) {
+            state.noiseBlur = action.payload;
         },
     }
 });
