@@ -62,22 +62,8 @@ export function Photo() {
     const ref = useRef(null);
     const imagePath = useSelector(state => state.imagePath);
     const userOptions = useSelector(state => state.userOptions);
-    const blurRadius = useSelector(state => state.blurRadius);
-    const maskThreshold = useSelector(state => state.maskThreshold);
-    const maskDensity = useSelector(state => state.maskDensity);
-    const noiseSigma = useSelector(state => state.noiseSigma);
-    const noiseBlur = useSelector(state => state.noiseBlur);
 
     const [darkroom, setDarkroom] = useState();
-
-    const userOpts = {
-        color_corr: userOptions.color_corr,
-        film_exposure: userOptions.film_exposure,
-        paper_exposure: 0.0,
-        paper_contrast: userOptions.paper_contrast,
-        curve_smoo: userOptions.curve_smoo,
-        mode: '#0',
-    };
 
     useEffect(() => {
         const canvas = ref.current;
@@ -105,7 +91,7 @@ export function Photo() {
         ]);
         mainProg.setUniform('u_spectrumData', spectrumData);
         mainProg.setUniform('u_profileData', profileData);
-        mainProg.setUniform('u_userOptions', userOpts);
+        //mainProg.setUniform('u_userOptions', userOpts);
 
         const image = new Texture(gl, 0);
         mainProg.setUniform('u_image', image);
@@ -152,9 +138,18 @@ export function Photo() {
             blurProg,
             noiseProg,
             image,
-            maskBlur: 0.0,
-            noiseBlur: 0.0,
-            run: function() {
+            run: function(uo) {
+                this.mainProg.setUniform('u_userOptions', {
+                    color_corr: uo.colorCorr,
+                    film_exposure: uo.filmExposure,
+                    paper_contrast: uo.paperContrast,
+                    curve_smoo: uo.curveSmoo,
+                });
+                this.mainProg.setUniform('u_maskThreshold', uo.maskThreshold);
+                this.mainProg.setUniform('u_maskDensity', uo.maskDensity);
+                //this.noiseProg.setUniform('u_seed', '#0');
+                this.noiseProg.setUniform('u_sigma', uo.noiseSigma);
+
                 const texNoise = new Texture(gl, 1);
                 texNoise.setData(gl.canvas.width, gl.canvas.height);
                 const fbNoise = new Framebuffer(gl, texNoise);
@@ -173,7 +168,7 @@ export function Photo() {
                 const fbHorzBlurMask = new Framebuffer(gl, texHorzBlurMask);
                 
                 let kernel = blurKernel(
-                    this.maskBlur, this.gl.canvas.width, this.gl.canvas.height
+                    uo.maskBlur, this.gl.canvas.width, this.gl.canvas.height
                 );
                 this.blurProg.setUniform('u_kernel', kernel);
 
@@ -190,7 +185,7 @@ export function Photo() {
                 this.blurProg.run(fbVertBlurMask);
 
                 kernel = blurKernel(
-                    this.noiseBlur, this.gl.canvas.width, this.gl.canvas.height
+                    uo.noiseBlur, this.gl.canvas.width, this.gl.canvas.height
                 );
                 this.blurProg.setUniform('u_kernel', kernel);
 
@@ -216,12 +211,6 @@ export function Photo() {
         };
 
         setDarkroom(_darkroom);
-
-        const _resizeObserver = new ResizeObserver(() => {
-            resizeCanvasToDisplaySize(canvas);
-            _darkroom.run();
-        });
-        _resizeObserver.observe(canvas, {box: 'content-box'});
     }, []);
 
     useEffect(() => {
@@ -240,6 +229,7 @@ export function Photo() {
 
     useEffect(() => {
         if (darkroom) {
+            /*
             darkroom.mainProg.setUniform('u_userOptions', userOpts);
             darkroom.mainProg.setUniform('u_maskThreshold', maskThreshold);
             darkroom.mainProg.setUniform('u_maskDensity', maskDensity);
@@ -247,14 +237,29 @@ export function Photo() {
             darkroom.noiseProg.setUniform('u_sigma', noiseSigma);
             darkroom.maskBlur = blurRadius;
             darkroom.noiseBlur = noiseBlur;
-            darkroom.run();
+            */
+            darkroom.run(userOptions);
+        }
+    });
+
+    useEffect(() => {
+        if (darkroom) {
+            const canvas = ref.current;
+            const resizeObserver = new ResizeObserver(() => {
+                resizeCanvasToDisplaySize(canvas);
+                darkroom.run(userOptions);
+            });
+            resizeObserver.observe(canvas, {box: 'content-box'});
+            return () => {
+                resizeObserver.unobserve(canvas);
+            };
         }
     });
 
     return (
         <canvas ref={ref} style={{
             backgroundColor: '#000',
-            width: '70%',
+            width: '74.5%',
             height: '100%',
             margin: '20px',
         }} />

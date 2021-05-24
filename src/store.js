@@ -4,57 +4,40 @@ import { createSlice } from '@reduxjs/toolkit';
 const initialState = {
     imagePath: undefined,
     userOptions: {
-        color_corr: [0.0, 0.0, 0.0],
-        film_exposure: -1.6,
-        paper_contrast: 1.8,
-        curve_smoo: 0.15
+        colorCorr: [0.0, 0.0, 0.0],
+        filmExposure: -1.6,
+        paperContrast: 1.8,
+        curveSmoo: 0.15,
+        maskBlur: 0.0,
+        maskThreshold: 0.9,
+        maskDensity: 0.0,
+        noiseSigma: 0.01,
+        noiseBlur: 0.046,
     },
-    blurRadius: 0,
-    maskThreshold: 0.9,
-    maskDensity: 0,
-    noiseSigma: 0.01,
-    noiseBlur: 0.046,
 };
 
 const rootSlice = createSlice({
     'name': 'main',
     initialState,
     reducers: {
-        loadImage(state, action) {
+        setImagePath(state, action) {
             state.imagePath = action.payload;
         },
 
-        setFilmExposure(state, action) {
-            state.userOptions.film_exposure = action.payload;
+        setUserOptions(state, action) {
+            state.userOptions = { ...state.userOptions, ...action.payload };
         },
 
         setColor(state, action) {
-            state.userOptions.color_corr[action.payload[0]] = action.payload[1];
-        },
-
-        setPaperContrast(state, action) {
-            state.userOptions.paper_contrast = action.payload;
-        },
-
-        setSmoothness(state, action) {
-            state.userOptions.curve_smoo = action.payload;
-        },
-
-        setBlurRadius(state, action) {
-            state.blurRadius = action.payload;
-        },
-        setMaskThreshold(state, action) {
-            state.maskThreshold = action.payload;
-        },
-        setMaskDensity(state, action) {
-            state.maskDensity = action.payload;
-        },
-
-        setNoiseSigma(state, action) {
-            state.noiseSigma = action.payload;
-        },
-        setNoiseBlur(state, action) {
-            state.noiseBlur = action.payload;
+            if (action.payload.red !== undefined) {
+                state.userOptions.colorCorr[0] = action.payload.red;
+            }
+            if (action.payload.green !== undefined) {
+                state.userOptions.colorCorr[1] = action.payload.green;
+            }
+            if (action.payload.blue !== undefined) {
+                state.userOptions.colorCorr[2] = action.payload.blue;
+            }
         },
     }
 });
