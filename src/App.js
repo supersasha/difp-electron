@@ -5,6 +5,9 @@ import { Photo } from './photo';
 import { Plot } from './plot';
 import 'antd/dist/antd.css';
 
+//import { profile } from './profiler';
+//profile();
+
 const { TabPane } = Tabs;
 const { dialog, BrowserWindow } = require('electron').remote;
 

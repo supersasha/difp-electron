@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Program, Texture, Framebuffer } from './glw';
 import { loadRaw } from './libraw';
+import { A_1931_64_400_700_10nm } from './profiler';
 
 const fs = require('fs');
 const erf = require('math-erf');
@@ -17,6 +18,7 @@ const noiseFragmentShader = fs.readFileSync('./shaders/noise.frag');
 
 const spectrumData = JSON.parse(fs.readFileSync('./data/spectrum-d55-4.json'));
 const profileData = JSON.parse(fs.readFileSync('./data/b29-50d.json'));
+//const profileData = JSON.parse(fs.readFileSync('./data/prof1.json'));
 
 function blurKernel(rr, w, h) {
     if (rr === 0) {
