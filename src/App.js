@@ -193,12 +193,11 @@ function App() {
                                 }}
                             />
                         </div>
-                        <Plot />
                     </div>
                 </div>
             </TabPane>
             <TabPane tab="graphs">
-                nothing yet
+                <Plot containerStyle={{ width: '100%', height: '400px' }}/>
             </TabPane>
         </Tabs>
     );

@@ -50,6 +50,10 @@ class Matrix {
         return res;
     }
 
+    toFlatArray() {
+        return [...this.data];
+    }
+
     size() {
         return this.shape.reduce((acc, e) => acc * e, 1);
     }

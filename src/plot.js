@@ -1,52 +1,165 @@
 import Konva from 'konva';
 import React, { useRef, useEffect, useState } from 'react';
+import { Matrix } from './matrix';
 
-export function Plot(props) {
-    const defaultProps = {
-        width: 320,
-        height: 200,
-    };
-    const _props = { ...defaultProps, props };
-    const elemRef = useRef(null);
-    const [stage, setStage] = useState(null);
+function *linspace(from, to, steps) {
+    if (steps < 2) {
+        return;
+    }
+    const d = (to - from) / (steps - 1);
+    for (let i = 0; i < steps; i++) {
+        yield from + d * i;
+    }
+}
+
+const xs = Matrix.fromArray([[...linspace(-10, 10, 10000)]]);
+
+const defaultProps = {
+    containerStyle: { width: '320px', height: '200px' },
+    plotMargin: 60,
+    xrange: 'auto', // 'auto' | [x0, x1]
+    yrange: 'auto', // 'auto' | [y0, y1]
+    plots: [
+        {
+            xs: xs.toFlatArray(),
+            ys: xs.map(x => Math.sin(x)).toFlatArray(),
+            style: 'blue',
+        },
+        {
+            xs: xs.toFlatArray(),
+            ys: xs.map(x => Math.exp(Math.sin(2*x))).toFlatArray(),
+            style: 'green',
+        },
+        {
+            xs: xs.toFlatArray(),
+            ys: xs.map(x => Math.exp(x === 0 ? 0 : Math.sin(1/x))).toFlatArray(),
+            style: 'red',
+        },
+    ],
+    xmarks: 11,
+    ymarks: 11,
+};
+
+export function Plot(_props) {
+    const props = { ...defaultProps, ..._props };
+    const containerRef = useRef(null);
+    const canvasRef = useRef(null);
+
+    function draw(ctx) {
+        const width = ctx.canvas.width;
+        const height = ctx.canvas.height;
+        const marg = props.plotMargin;
+        ctx.clearRect(0, 0, width, height);
+        ctx.strokeRect(
+            marg + 0.5, marg + 0.5,
+            width - 2*marg, height - 2*marg
+        );
+        let xmin = Infinity;
+        let xmax = -Infinity;
+        let ymin = Infinity;
+        let ymax = -Infinity;
+        for (let p of props.plots) {
+            for (let x of p.xs) {
+                if (x < xmin) {
+                    xmin = x;
+                }
+                if (x > xmax) {
+                    xmax = x;
+                }
+            }
+            for (let y of p.ys) {
+                if (y < ymin) {
+                    ymin = y;
+                }
+                if (y > ymax) {
+                    ymax = y;
+                }
+            }
+        }
+        let xrange = props.xrange;
+        if (xrange === 'auto') {
+            xrange = [xmin, xmax];
+        }
+        let yrange = props.yrange;
+        if (yrange === 'auto') {
+            yrange = [ymin, ymax];
+        }
+
+        // X marks
+        ctx.save();
+        ctx.font = '8px sans';
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 0.1;
+        ctx.setLineDash([10, 2]);
+        let screenMarks = [...linspace(marg, width - marg, props.xmarks)];
+        let plotMarks = [...linspace(xrange[0], xrange[1], props.xmarks)];
+        for (let i = 0; i < props.xmarks; i++) {
+            ctx.fillText(plotMarks[i].toFixed(2), screenMarks[i], height - 0.8*marg);
+            ctx.beginPath();
+            ctx.moveTo(Math.floor(screenMarks[i])+0.5, height - marg);
+            ctx.lineTo(Math.floor(screenMarks[i])+0.5, marg);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        // Y marks
+        ctx.save();
+        ctx.font = '8px sans';
+        ctx.textAlign = 'right';
+        ctx.lineWidth = 0.1;
+        ctx.setLineDash([10, 2]);
+        screenMarks = [...linspace(height - marg, marg, props.ymarks)];
+        plotMarks = [...linspace(yrange[0], yrange[1], props.ymarks)];
+        for (let i = 0; i < props.ymarks; i++) {
+            ctx.fillText(plotMarks[i].toFixed(2), marg-5, screenMarks[i]);
+            ctx.beginPath();
+            ctx.moveTo(width - marg, Math.floor(screenMarks[i])+0.5);
+            ctx.lineTo(marg, Math.floor(screenMarks[i])+0.5);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        for (let p of props.plots) {
+            ctx.save();
+            ctx.save();
+            ctx.translate(marg, marg);
+            ctx.scale((width - 2*marg)/ (xrange[1] - xrange[0]), (height - 2*marg)/ (yrange[0] - yrange[1]));
+            ctx.translate(-xrange[0], -yrange[1]);
+            ctx.beginPath();
+            ctx.moveTo(p.xs[0], p.ys[0]);
+            for (let i = 1; i < p.xs.length; i++) {
+                ctx.lineTo(p.xs[i], p.ys[i]);
+            }
+            ctx.restore();
+            ctx.lineWidth = 1.0;
+            ctx.strokeStyle = p.style;
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
 
     useEffect(() => {
-        const stage = new Konva.Stage({
-            container: elemRef.current,
-            width: _props.width,
-            height: _props.height,
+        const canvas = canvasRef.current;
+        const container = containerRef.current;
+        const ctx = canvas.getContext('2d');
+        const ro = new ResizeObserver(() => {
+            canvas.width  = container.clientWidth;
+            canvas.height = container.clientHeight;
+            draw(ctx);
         });
-        setStage(stage);
+        canvas.width  = container.clientWidth;
+        canvas.height = container.clientHeight;
+        ro.observe(container);
+        draw(ctx);
         return () => { 
-            console.log('Removing stage');
-            setStage(null);
+            ro.disconnect();
         };
     }, []);
 
-    useEffect(() => {
-        if (!stage) {
-            return;
-        }
-        console.log('Stage:', stage);
-        //stage.clear();
-        const layer = new Konva.Layer();
-        const rect = new Konva.Rect({
-            x: 10.5,
-            y: 10.5,
-            width: 30,
-            height: 20,
-            stroke: 'black',
-            strokeWidth: 1,
-        });
-        layer.add(rect);
-        stage.add(layer);
-        //layer.draw();
-        //stage.draw();
-        return () => {
-            console.log('Removing layer');
-            layer.destroy();
-        };
-    });
-
-    return <div ref={elemRef} />;
+    return (
+        <div ref={containerRef} style={props.containerStyle}>
+            <canvas ref={canvasRef} />
+        </div>
+    );
 }
+
