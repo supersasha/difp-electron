@@ -2,7 +2,8 @@ import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button, Switch, Slider, Tabs } from 'antd';
 import { Photo } from './photo';
-import { Plot } from './plot';
+import { ProfileTab } from './profile-tab';
+
 import 'antd/dist/antd.css';
 
 //import { profile } from './profiler';
@@ -26,7 +27,7 @@ function App() {
 
     return (
         <Tabs tabPosition="left" type="card">
-            <TabPane tab="main" key="1">
+            <TabPane tab="Photo" key="1">
                 <div style={{display: 'flex', width: '100%'}}>
                     <Photo />
                     <div style={{backgroundColor: '#eee', padding: '20px'}}>
@@ -196,8 +197,8 @@ function App() {
                     </div>
                 </div>
             </TabPane>
-            <TabPane tab="graphs">
-                <Plot containerStyle={{ width: '100%', height: '400px' }}/>
+            <TabPane tab="Profile">
+                <ProfileTab/>
             </TabPane>
         </Tabs>
     );

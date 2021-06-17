@@ -1,6 +1,6 @@
-import Konva from 'konva';
 import React, { useRef, useEffect, useState } from 'react';
 import { Matrix } from './matrix';
+import fs from 'fs';
 
 function *linspace(from, to, steps) {
     if (steps < 2) {
@@ -15,7 +15,7 @@ function *linspace(from, to, steps) {
 const xs = Matrix.fromArray([[...linspace(-10, 10, 10000)]]);
 
 const defaultProps = {
-    containerStyle: { width: '320px', height: '200px' },
+    containerStyle: {},
     plotMargin: 60,
     xrange: 'auto', // 'auto' | [x0, x1]
     yrange: 'auto', // 'auto' | [y0, y1]
@@ -37,7 +37,10 @@ const defaultProps = {
         },
     ],
     xmarks: 11,
+    xmarkFormat: 'fixed:2',
     ymarks: 11,
+    ymarksFormat: 'fixed:2',
+    title: "Plot",
 };
 
 export function Plot(_props) {
@@ -46,6 +49,10 @@ export function Plot(_props) {
     const canvasRef = useRef(null);
 
     function draw(ctx) {
+        function format(n, f) {
+            let parts = f.split(':');
+            return n.toFixed(parseInt(parts[1]));
+        }
         const width = ctx.canvas.width;
         const height = ctx.canvas.height;
         const marg = props.plotMargin;
@@ -54,6 +61,9 @@ export function Plot(_props) {
             marg + 0.5, marg + 0.5,
             width - 2*marg, height - 2*marg
         );
+        ctx.font = '16px sans';
+        ctx.textAlign = 'center';
+        ctx.fillText(props.title, width/2, marg/2);
         let xmin = Infinity;
         let xmax = -Infinity;
         let ymin = Infinity;
@@ -94,7 +104,7 @@ export function Plot(_props) {
         let screenMarks = [...linspace(marg, width - marg, props.xmarks)];
         let plotMarks = [...linspace(xrange[0], xrange[1], props.xmarks)];
         for (let i = 0; i < props.xmarks; i++) {
-            ctx.fillText(plotMarks[i].toFixed(2), screenMarks[i], height - 0.8*marg);
+            ctx.fillText(format(plotMarks[i], props.xmarkFormat), screenMarks[i], height - 0.8*marg);
             ctx.beginPath();
             ctx.moveTo(Math.floor(screenMarks[i])+0.5, height - marg);
             ctx.lineTo(Math.floor(screenMarks[i])+0.5, marg);
@@ -111,7 +121,7 @@ export function Plot(_props) {
         screenMarks = [...linspace(height - marg, marg, props.ymarks)];
         plotMarks = [...linspace(yrange[0], yrange[1], props.ymarks)];
         for (let i = 0; i < props.ymarks; i++) {
-            ctx.fillText(plotMarks[i].toFixed(2), marg-5, screenMarks[i]);
+            ctx.fillText(format(plotMarks[i], props.ymarksFormat), marg-5, screenMarks[i]);
             ctx.beginPath();
             ctx.moveTo(width - marg, Math.floor(screenMarks[i])+0.5);
             ctx.lineTo(marg, Math.floor(screenMarks[i])+0.5);
@@ -119,6 +129,13 @@ export function Plot(_props) {
         }
         ctx.restore();
 
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(marg, marg);
+        ctx.lineTo(width - marg, marg);
+        ctx.lineTo(width - marg, height - marg);
+        ctx.lineTo(marg, height - marg);
+        ctx.clip();
         for (let p of props.plots) {
             ctx.save();
             ctx.save();
@@ -136,6 +153,7 @@ export function Plot(_props) {
             ctx.stroke();
             ctx.restore();
         }
+        ctx.restore();
     }
 
     useEffect(() => {
@@ -163,3 +181,43 @@ export function Plot(_props) {
     );
 }
 
+export function Spectrum31Plot(props) {
+    const xs = [...linspace(400, 700, 31)];
+    return (
+        <Plot
+            {...props}
+            plots={props.data.map(d => (
+                {
+                    xs,
+                    ys: d.ys,
+                    style: d.style
+                }
+            ))}
+            xmarks={31}
+            xmarkFormat="fixed:0"
+        />
+    );
+}
+
+export function ProfilePlot(props) {
+    const data = JSON.parse(fs.readFileSync(props.path))[props.what];
+    return (
+        <Spectrum31Plot
+            {...props}
+            data={[
+                {
+                    ys: data[0],
+                    style: 'cyan',
+                },
+                {
+                    ys: data[1],
+                    style: 'magenta',
+                },
+                {
+                    ys: data[2],
+                    style: 'yellow',
+                },
+            ]}
+        />
+    );
+}
