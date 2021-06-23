@@ -73,7 +73,7 @@ function daylightSpectrum(temp) {
     return D_S0.add(D_S1.mul(m1)).add(D_S2.mul(m2));
 }
 
-function xyz_to_srgb(c) {
+export function xyzToSrgb(c) {
     const x = c.getv(0) / 100.0;
     const y = c.getv(1) / 100.0;
     const z = c.getv(2) / 100.0;
@@ -126,6 +126,40 @@ function xyz_to_srgb(c) {
         b = 1.0;
     }
     return Matrix.fromArray([[r, g, b]]);
+}
+
+export function srgbToXyz(c) {
+    let r = c.getv(0);
+    let g = c.getv(1);
+    let b = c.getv(2);
+
+    if(r > 0.04045) {
+        r = Math.pow((r + 0.055) / 1.055, 2.4);
+    } else {
+        r /= 12.92;
+    }
+
+    if(g > 0.04045) {
+        g = Math.pow((g + 0.055) / 1.055, 2.4);
+    } else {
+        g /= 12.92;
+    }
+
+    if(b > 0.04045) {
+        b = Math.pow((b + 0.055) / 1.055, 2.4);
+    } else {
+        b /= 12.92;
+    }
+
+    r *= 100.0;
+    g *= 100.0;
+    b *= 100.0;
+
+    const x = r * 0.4124 + g * 0.3576 + b * 0.1805;
+    const y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+    const z = r * 0.0193 + g * 0.1192 + b * 0.9505;
+
+    return Matrix.fromArray([[x, y, z]]);
 }
 
 const ref_x = 95.047;
@@ -370,7 +404,7 @@ function loadSpectrumData(filename) {
     return data;
 }
 
-class Developer {
+export class Developer {
     constructor() {
         this.devLight = daylightSpectrum(5500);
         this.projLight = daylightSpectrum(5500);
@@ -403,10 +437,8 @@ class Developer {
         console.log(`Chi film at 0: ${cf.get(0)}, kfmax: ${this.kfmax}`);
         this.chiFilm = [cf, cf, cf];
     }
-    
-    setup(q) {
-        this.makeCouplers(q);
 
+    setup() {
         const hprojMax = this.beta(-10.0);
         const hprojMin = this.beta(1.0);
         
@@ -420,9 +452,16 @@ class Developer {
         this.paperDyes = this.paperDyes0.mul(4 / this.delta(-4));
     }
 
+    /*
     generatedColor(xyz) {
         const refl = this.reflGen.reflOf(xyz);
         return this.mtxRefl.mmul(refl);
+    }
+    */
+
+    dyesToXyz(dyes, qs) {
+        const trans = transmittance(dyes, qs);
+        return this.mtxRefl.mmul(trans.transpose()).transpose();
     }
 
     develop(xyz) {
@@ -430,11 +469,10 @@ class Developer {
         const H = exposure(this.filmSense, sp).map(log10);
         const negative = this.developFilm(H);
         const positive = this.developPaper(negative);
-        const trans = transmittance(positive, Matrix.fill([1, 3], 1));
-        return this.mtxRefl.mmul(trans.transpose()).transpose();
+        return this.dyesToXyz(positive, Matrix.fill([1, 3], 1));
     }
 
-    developFilm(H) {
+    developFilmSep(H) {
         const dev = Matrix.fromArray([[
             this.chiFilm[0].get(H.getv(0)),
             this.chiFilm[1].get(H.getv(1)),
@@ -447,6 +485,11 @@ class Developer {
             1 - dev.getv(2) / this.kfmax,
         ]]);
         const developedCouplers = this.couplers.rowWise((e1, e2) => e1 * e2, cDev);
+        return [developedDyes, developedCouplers];
+    }
+
+    developFilm(H) {
+        const [developedDyes, developedCouplers] = this.developFilmSep(H);
         return developedDyes.add(developedCouplers);
     }
 
@@ -477,9 +520,10 @@ class Developer {
         const trans = kfs.mmul(this.filmDyes)
                          .add(cKfs.mmul(this.couplers))
                          .map(e => Math.pow(10, -e));
-        return this.paperSense.map(e => Math.pow(10, e))
-                              .mmul(this.projLight.elementWise((e1, e2) => e1* e2, trans).transpose())
+        const res = this.paperSense.map(e => Math.pow(10, e))
+                              .mmul(this.projLight.elementWise((e1, e2) => e1*e2, trans).transpose())
                               .map(log10);
+        return res;
     }
     
     delta(D) {
@@ -507,6 +551,12 @@ class Developer {
             }
         }
     }
+
+    // Alternative to makeCouplers()
+    // couplers - matrix 3x31
+    makeCouplersFromMatrix(couplers) {
+        this.couplers = couplers;
+    }
 }
 
 class Solver {
@@ -517,7 +567,8 @@ class Solver {
 
     solveFun(qs, print = false)
     {
-        this.dev.setup(qs);
+        this.dev.makeCouplers(qs);
+        this.dev.setup();
         let d = 0;
         for (let [xyz, w] of this.xyzs) {
             const xyz1 = this.dev.develop(xyz);
@@ -594,7 +645,6 @@ export async function profile() {
     const solver = new Solver();
     solver.solve();
     solver.solveFun(solver.solution, true);
-    //std::cout << solver.to_json() << "\n";
 }
 
 export async function test() {

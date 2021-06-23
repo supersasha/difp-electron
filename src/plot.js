@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Matrix } from './matrix';
 import fs from 'fs';
 
-function *linspace(from, to, steps) {
+export function *linspace(from, to, steps) {
     if (steps < 2) {
         return;
     }
@@ -39,8 +39,9 @@ const defaultProps = {
     xmarks: 11,
     xmarkFormat: 'fixed:2',
     ymarks: 11,
-    ymarksFormat: 'fixed:2',
+    ymarkFormat: 'fixed:2',
     title: "Plot",
+    lineWidth: 1,
 };
 
 export function Plot(_props) {
@@ -86,6 +87,14 @@ export function Plot(_props) {
                 }
             }
         }
+        if (xmin === xmax) {
+            xmin = xmin - 1;
+            xmax = xmax + 1;
+        }
+        if (ymin === ymax) {
+            ymin = ymin - 1;
+            ymax = ymax + 1;
+        }
         let xrange = props.xrange;
         if (xrange === 'auto') {
             xrange = [xmin, xmax];
@@ -121,7 +130,7 @@ export function Plot(_props) {
         screenMarks = [...linspace(height - marg, marg, props.ymarks)];
         plotMarks = [...linspace(yrange[0], yrange[1], props.ymarks)];
         for (let i = 0; i < props.ymarks; i++) {
-            ctx.fillText(format(plotMarks[i], props.ymarksFormat), marg-5, screenMarks[i]);
+            ctx.fillText(format(plotMarks[i], props.ymarkFormat), marg-5, screenMarks[i]);
             ctx.beginPath();
             ctx.moveTo(width - marg, Math.floor(screenMarks[i])+0.5);
             ctx.lineTo(marg, Math.floor(screenMarks[i])+0.5);
@@ -148,7 +157,7 @@ export function Plot(_props) {
                 ctx.lineTo(p.xs[i], p.ys[i]);
             }
             ctx.restore();
-            ctx.lineWidth = 1.0;
+            ctx.lineWidth = props.lineWidth;
             ctx.strokeStyle = p.style;
             ctx.stroke();
             ctx.restore();
@@ -173,6 +182,12 @@ export function Plot(_props) {
             ro.disconnect();
         };
     }, []);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        draw(ctx);
+    });
 
     return (
         <div ref={containerRef} style={props.containerStyle}>

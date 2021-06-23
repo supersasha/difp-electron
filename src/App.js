@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Button, Switch, Slider, Tabs } from 'antd';
 import { Photo } from './photo';
 import { ProfileTab } from './profile-tab';
+import { DevelopTab } from './develop-tab';
 
 import 'antd/dist/antd.css';
 
@@ -197,8 +198,11 @@ function App() {
                     </div>
                 </div>
             </TabPane>
-            <TabPane tab="Profile">
+            <TabPane tab="Profile" key="2">
                 <ProfileTab/>
+            </TabPane>
+            <TabPane tab="Develop" key="3">
+                <DevelopTab/>
             </TabPane>
         </Tabs>
     );
