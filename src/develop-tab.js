@@ -5,8 +5,13 @@ import 'antd/dist/antd.css';
 import fs from 'fs';
 
 import { Matrix } from './matrix';
-import { xyzToSrgb, srgbToXyz, Developer } from './profiler';
+import { xyzToSrgb, srgbToXyz,} from './colors';
+import { logExposure, transmittance } from './spectrum';
+import { Developer } from './profiler';
 import { Plot, Spectrum31Plot, linspace } from './plot';
+import { fill } from './generators';
+
+import nlopt from 'nlopt-js';
 
 export function RGBColorBox(_props) {
     const defaultProps = {
@@ -63,9 +68,12 @@ export function DevelopTab(props) {
 
     const xyzD = dev.dyesToXyz(dev.paperDyes,
         Matrix.fromArray([[densCyan, densMagenta, densYellow]]));
-    console.log('xyzD:', xyzD);
     const rgbD = xyzToSrgb(xyzD);
-    console.log('rgbD:', rgbD);
+
+    //const spD = dev.reflGen.spectrumOf(xyzD);
+    const transD = transmittance(dev.paperDyes,
+        Matrix.fromArray([[densCyan, densMagenta, densYellow]]));
+    const exposD = logExposure(dev.filmSense, transD.elementWise((e1, e2) => e1 * e2, dev.devLight));
 
     const h = Matrix.fromArray([hCyan, hMagenta, hYellow]);
     const [devFilmDyes, devFilmCouplers] = dev.developFilmSep(h);
@@ -198,6 +206,123 @@ export function DevelopTab(props) {
                             value={densYellow}
                             onChange={setDensYellow}
                         />
+                        <div>
+                            {`XYZ: ${xyzD.show()}`}
+                        </div>
+                        <div>
+                            {`Exposure density: ${exposD.show(4)}`}
+                        </div>
+                        <div>
+                            <Button onClick={() => {
+                                //console.log(`[[${densCyan}, ${densMagenta}, ${densYellow}], [${exposD.getv(0).toFixed(4)}, ${exposD.getv(1).toFixed(4)}, ${exposD.getv(2).toFixed(4)}]],`);
+                                const colors = [
+                                    [[0, 0, 0], [0.0000, 0.0000, 0.0000]],
+                                    [[0.5, 0, 0], [-0.6219, -0.1014, -0.0652]],
+                                    [[0, 0.5, 0], [-0.0573, -0.5112, -0.0828]],
+                                    [[0, 0, 0.5], [-0.0088, -0.0504, -0.4753]],
+                                    [[1, 0, 0], [-1.1959, -0.1930, -0.1245]],
+                                    [[0, 1, 0], [-0.1090, -0.9883, -0.1620]],
+                                    [[0, 0, 1], [-0.0176, -0.0956, -0.9301]],
+                                    [[1.33, 0.59, 0], [-1.6807, -0.8592, -0.2672]],
+                                    [[0, 1.14, 1.09], [-0.1416, -1.2469, -1.1997]],
+                                    [[1.32, 0, 1.09], [-1.5556, -0.3761, -1.1993]],
+                                    [[0.5, 0.5, 0.5], [-0.7051, -0.6824, -0.6351]],
+                                    [[1, 1, 1], [-1.3969, -1.3569, -1.2642]],
+                                    [[2, 2, 2], [-2.7389, -2.6802, -2.5027]],
+                                    [[1.32, 1.29, 0], [-1.8037, -1.5170, -0.3850]],
+                                ];
+                                const cmyrgb = colors.map(([cmy, rgb]) => (
+                                    [Matrix.fromArray([cmy]), Matrix.fromArray([rgb])]
+                                ));
+                                const opt = nlopt.Optimize(nlopt.Algorithm.LN_PRAXIS, 9);
+                                opt.setMinObjective((x, grad) => {
+                                    const mtx = Matrix.fromArray([
+                                        [x[0], x[1], x[2]],
+                                        [x[3], x[4], x[5]],
+                                        [x[6], x[7], x[8]],
+                                    ]);
+                                    //const v = Matrix.fromArray([[x[9], x[10], x[11]]]);
+                                    let s = 0;
+                                    for (let i = 0; i < cmyrgb.length; i++) {
+                                        const [cmy, rgb] = cmyrgb[i];
+                                        const d = rgb.mmul(mtx)/*.add(v)*/.sub(cmy);
+                                        //console.log('d:', d);
+                                        s += d.dot(d);
+                                    }
+                                    return s;
+                                }, 1e-6);
+                                opt.setLowerBounds([...fill(9, -10)]);
+                                opt.setUpperBounds([...fill(9,  10)]);
+                                const res = opt.optimize([...fill(9, 0)]);
+                                console.log(res);
+                                const x = res.x;
+                                const mtx = Matrix.fromArray([
+                                    [x[0], x[1], x[2]],
+                                    [x[3], x[4], x[5]],
+                                    [x[6], x[7], x[8]],
+                                ]);
+                                console.log(mtx.show(4));
+                                for (let i = 0; i < cmyrgb.length; i++) {
+                                    const [cmy, rgb] = cmyrgb[i];
+                                    console.log(cmy.show(), rgb.show(), '-->', rgb.mmul(mtx).show());
+                                }
+                            }}>
+                                opt mtx 2
+                            </Button>
+                        </div>
+                        <div>
+                            <Button onClick={async () => {
+                                await nlopt.ready;
+                                const n = 1000;
+                                const rnd = () => Math.random() * 4;
+                                const xyzs = [];
+                                for (let i = 0; i < n; i++) {
+                                    const cmy = Matrix.fromArray([[rnd(), rnd(), rnd()]]);
+                                    const xyz = dev.dyesToXyz(dev.paperDyes, cmy);
+                                    //console.log([cmy, xyz]);
+                                    xyzs.push([cmy.map(x => Math.pow(10, -x)), xyz]);
+                                }
+                                const opt = nlopt.Optimize(nlopt.Algorithm.GN_ISRES, 12);
+                                opt.setMinObjective((x, grad) => {
+                                    const mtx = Matrix.fromArray([
+                                        [x[0], x[1], x[2]],
+                                        [x[3], x[4], x[5]],
+                                        [x[6], x[7], x[8]],
+                                    ]);
+                                    const v = Matrix.fromArray([[x[9], x[10], x[11]]]);
+                                    let s = 0;
+                                    for (let i = 0; i < n; i++) {
+                                        const [cmy, xyz] = xyzs[i];
+                                        const d = xyz.mmul(mtx).add(v).sub(cmy);
+                                        //console.log('d:', d);
+                                        s += d.dot(d);
+                                    }
+                                    console.log('s:', 1000 * s);
+                                    return 1000 * s;
+                                }, 1e-10);
+                                opt.setLowerBounds([...fill(12, -100)]);
+                                opt.setUpperBounds([...fill(12,  100)]);
+                                const res = opt.optimize([...fill(12, 0)]);
+                                console.log(res);
+                                const x = res.x;
+                                const mtx = Matrix.fromArray([
+                                    [x[0], x[1], x[2]],
+                                    [x[3], x[4], x[5]],
+                                    [x[6], x[7], x[8]],
+                                ]);
+                                const v = Matrix.fromArray([[x[9], x[10], x[11]]]);
+                                function log10(v) {
+                                    return Math.log(v) / Math.LN10;
+                                }
+                                for (let i = 0; i < n; i++) {
+                                    const [cmy, xyz] = xyzs[i];
+                                    const cmy1 = cmy.map(x => -log10(x));
+                                    console.log(cmy1.show(), xyz.show(), '-->', xyz.mmul(mtx).add(v).map(x => Math.pow(10, -x)).show());
+                                }
+                            }}>
+                                opt mtx
+                            </Button>
+                        </div>
                     </div>
                     <RGBColorBox
                         size={300}

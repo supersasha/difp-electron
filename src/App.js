@@ -4,6 +4,7 @@ import { Button, Switch, Slider, Tabs } from 'antd';
 import { Photo } from './photo';
 import { ProfileTab } from './profile-tab';
 import { DevelopTab } from './develop-tab';
+import { CouplersTab } from './couplers-tab';
 
 import 'antd/dist/antd.css';
 
@@ -203,6 +204,9 @@ function App() {
             </TabPane>
             <TabPane tab="Develop" key="3">
                 <DevelopTab/>
+            </TabPane>
+            <TabPane tab="Couplers" key="4">
+                <CouplersTab/>
             </TabPane>
         </Tabs>
     );
