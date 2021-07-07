@@ -82,6 +82,7 @@ export function logExposure(logsense, sp) {
     return exposure(logsense, sp).map(log10);
 }
 
+// Sensors normalized to logExposure to be zero (0, 0, 0) at light
 export function normalizedSense(logsense, light) {
     const E = exposure(logsense, light);
     const theta = E.map(e => -log10(e));
@@ -92,6 +93,9 @@ export function normalizedSense(logsense, light) {
     return normSense;
 }
 
+// ?? The matrix that when being multiplied by spectral transmittance
+// ?? will give the XYZ color.
+// ?? It is assumed that the light gives white color of maximum intensity.
 export function transmittanceToXyzMtx(light) {
     const N = A_1931_64_400_700_10nm.row(1).dot(light);
     return A_1931_64_400_700_10nm.colWise((a, l) => a * l, light.map(l => 100 / N * l));
@@ -102,14 +106,20 @@ export function whitePoint(ill) {
     return chromaticity(xyz);
 }
 
+// Spectral transmittance of the dyes taken in the given quantities,
+// i.e. what part of the light passes through the dyes on each wavelength.
+// The maximum is 1 at each wavelength (full transmission).
 export function transmittance(dyes, qs) {
     return dyes.transpose().mmul(qs.transpose()).map(e => Math.pow(10, -e)).transpose();
 }
 
+// The light that passes through the dyes if the given light falls
 export function outflux(dyes, light, qs) {
     return light.elementWise((l, t) => l * t, transmittance(dyes, qs));
 }
 
+// The integral (not spectral) density the dyes (taken with the given quantities)
+// create when the given light falls on them.
 export function dyeDensity(dyes, light, qs) {
     const out = outflux(dyes, light, qs);
     const sum = (acc, x) => acc + x;
@@ -117,6 +127,8 @@ export function dyeDensity(dyes, light, qs) {
     return Math.log(r) / Math.LN10;
 }
 
+// Returns quantities of dyes so that the light transmitted or reflected
+// from the dyes would create neutral (gray) color of the given density
 export function normalizedDyesQs(dyes, light, density) {
     const trMtx = transmittanceToXyzMtx(light);
     const wp = whitePoint(light);

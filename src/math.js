@@ -13,6 +13,22 @@ export function bell(a, mu, sigma, x) {
     return a * Math.exp(-d*d);
 }
 
+export function add(a, b) {
+    return a + b;
+}
+
+export function sub(a, b) {
+    return a - b;
+}
+
+export function mul(a, b) {
+    return a * b;
+}
+
+export function div(a, b) {
+    return a / b;
+}
+
 export class Chi {
     constructor(xmin, xmax, ymin, ymax) {
         this.xmin = xmin;
