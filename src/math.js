@@ -29,17 +29,31 @@ export function div(a, b) {
     return a / b;
 }
 
+export function neg(a) {
+    return -a;
+}
+
 export class Chi {
     constructor(xmin, xmax, ymin, ymax) {
         this.xmin = xmin;
         this.xmax = xmax;
         this.ymin = ymin;
         this.ymax = ymax;
+        this.gamma = (ymax - ymin) / (xmax - xmin);
     }
 
     static to(ymin, ymax, gamma, xmax) {
         const xmin = xmax - (ymax - ymin) / gamma;
         return new Chi(xmin, xmax, ymin, ymax);
+    }
+
+    static from(ymin, gamma, xmin, xmax) {
+        const ymax = gamma * (xmax - xmin) + ymin;
+        return new Chi(xmin, xmax, ymin, ymax);
+    }
+
+    at(x) {
+        return this.get(x);
     }
 
     get(x) {
@@ -49,13 +63,14 @@ export class Chi {
         if (x > this.xmax) {
             return this.ymax;
         }
-        return (x - this.xmin) / (this.xmax - this.xmin) * (this.ymax - this.ymin) + this.ymin;
+        return (x - this.xmin) * this.gamma + this.ymin;
     }
 
     gamma() {
-        return (this.ymax - this.ymin) / (this.xmax - this.xmin);
+        return this.gamma;
     }
 
+    // obsolete, use xmax directly
     hmax() {
         return this.xmax;
     }

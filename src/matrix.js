@@ -4,6 +4,10 @@ class Matrix {
         this.shape = shape;
     }
 
+    copy() {
+        return new Matrix(new Float64Array(this.data), [...this.shape]);
+    }
+
     static fromArray(a) {
         let shape = [];
         let b = a;
@@ -60,6 +64,7 @@ class Matrix {
 
     set(row, col, val) {
         this.data[row * this.shape[1] + col] = val;
+        return this;
     }
 
     get(row, col) {
@@ -68,6 +73,11 @@ class Matrix {
 
     getv(i) {
         return this.data[i];
+    }
+
+    setv(i, v) {
+        this.data[i] = v;
+        return this;
     }
 
     row(r) {

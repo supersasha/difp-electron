@@ -10,26 +10,9 @@ import { logExposure, transmittance } from './spectrum';
 import { Developer } from './profiler';
 import { Plot, Spectrum31Plot, linspace } from './plot';
 import { fill } from './generators';
+import { RGBColorBox } from './colorbox';
 
 import nlopt from 'nlopt-js';
-
-export function RGBColorBox(_props) {
-    const defaultProps = {
-        size: 100,
-        red: 0,
-        green: 0,
-        blue: 0
-    };
-    const props = {...defaultProps, ..._props};
-    return (
-        <div style={{
-            width: props.size,
-            height: props.size,
-            background: `rgb(${props.red*100}%, ${props.green*100}%, ${props.blue*100}%)`
-        }}>
-        </div>
-    );
-}
 
 export function DevelopTab(props) {
     const [red, setRed] = useState(0);
@@ -71,7 +54,7 @@ export function DevelopTab(props) {
     const rgbD = xyzToSrgb(xyzD);
 
     //const spD = dev.reflGen.spectrumOf(xyzD);
-    const transD = transmittance(dev.paperDyes,
+    const transD = transmittance(dev.paperDyes0,
         Matrix.fromArray([[densCyan, densMagenta, densYellow]]));
     const exposD = logExposure(dev.filmSense, transD.elementWise((e1, e2) => e1 * e2, dev.devLight));
 

@@ -1,7 +1,11 @@
 import { Matrix } from './matrix';
-import { log10 } from './math';
+import { log10, mul } from './math';
 import { chromaticity } from './colors';
 import nlopt from 'nlopt-js';
+
+(async function() {
+    await nlopt.ready;
+})();
 
 export const A_1931_64_400_700_10nm = Matrix.fromArray([
     [ 0.0191097, 0.0020044, 0.0860109 ],
@@ -113,6 +117,10 @@ export function transmittance(dyes, qs) {
     return dyes.transpose().mmul(qs.transpose()).map(e => Math.pow(10, -e)).transpose();
 }
 
+export function layerTransmittance(dye, q) {
+    return dye.map(x => Math.pow(10, -x * q));
+}
+
 // The light that passes through the dyes if the given light falls
 export function outflux(dyes, light, qs) {
     return light.elementWise((l, t) => l * t, transmittance(dyes, qs));
@@ -169,6 +177,6 @@ export class ReflGen {
 
     reflOf(xyz) {
         const v = this.triToVMtx.mmul(xyz.transpose());
-        return this.base.mmul(v).clip(1e-15, 1).transpose();
+        return this.base.mmul(v).transpose().clip(1e-15, 1);
     }
 }

@@ -61,7 +61,7 @@ function resizeCanvasToDisplaySize(canvas) {
 }
 
 export function Photo() {
-    return <div>No photo (A. Ovchinnikov)</div>;
+    //return <div>No photo (A. Ovchinnikov)</div>;
     const ref = useRef(null);
     const imagePath = useSelector(state => state.imagePath);
     const userOptions = useSelector(state => state.userOptions);

@@ -3,6 +3,7 @@ import { PhotoTab } from './photo-tab';
 import { ProfileTab } from './profile-tab';
 import { DevelopTab } from './develop-tab';
 import { CouplersTab } from './couplers-tab';
+import { LabTab } from './lab-tab';
 import { Tabs } from 'antd';
 
 import 'antd/dist/antd.css';
@@ -26,6 +27,9 @@ function App() {
             </TabPane>
             <TabPane tab="Couplers" key="4">
                 <CouplersTab/>
+            </TabPane>
+            <TabPane tab="Lab" key="5">
+                <LabTab/>
             </TabPane>
         </Tabs>
     );
