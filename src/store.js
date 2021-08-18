@@ -5,13 +5,14 @@ const initialState = {
     imagePath: undefined,
     userOptions: {
         colorCorr: [0.0, 0.0, 0.0],
-        filmExposure: -1.6,
-        paperContrast: 1.8,
-        curveSmoo: 0.15,
+        filmExposure: 0,//-1.6,
+        paperExposure: 0.0,
+        paperContrast: 1.0,//1.8,
+        curveSmoo: 0.01,//0.15,
         maskBlur: 0.0,
         maskThreshold: 0.9,
         maskDensity: 0.0,
-        noiseSigma: 0.01,
+        noiseSigma: 0.0, //0.01,
         noiseBlur: 0.046,
     },
 };

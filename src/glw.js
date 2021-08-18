@@ -1,3 +1,9 @@
+export function initExtensions(gl) {
+    console.log(gl.getExtension('OES_texture_float_linear'));
+    console.log(gl.getExtension('EXT_color_buffer_float'));
+    console.log(gl.getExtension('EXT_float_blend'));
+}
+
 export function initUniform(gl, program, struct, path) {
     if (Array.isArray(struct)) {
         const innerArray = path[path.length-1] === ']';
@@ -57,7 +63,7 @@ function createProgram(gl, vertexShader, fragmentShader) {
 
 export class Program {
     constructor(gl, vertexShaderSource, fragmentShaderSource) {
-        gl.getExtension('OES_texture_float_linear');
+        //gl.getExtension('OES_texture_float_linear');
         const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
         const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
         this.gl = gl;
@@ -115,8 +121,10 @@ export class Program {
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
         }
+        /*
         const ext1 = gl.getExtension('OES_texture_float_linear');
         const ext2 = gl.getExtension('EXT_color_buffer_float');
+        */
 
         gl.clearColor(1, 1, 1, 1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -147,9 +155,11 @@ export class Texture {
             alpha: true,
             ...options
         };
+        /*
         if (opts.minFilter === gl.LINEAR || opts.magFilter === gl.LINEAR) {
             gl.getExtension('OES_texture_float_linear');
         }
+        */
 
         // make unit the active texture uint
         // (ie, the unit all other texture commands will affect
@@ -182,9 +192,11 @@ export class Texture {
 
 export class Framebuffer {
     constructor(gl, tex) {
+        /*
         console.log(gl.getExtension('OES_texture_float_linear'));
         console.log(gl.getExtension('EXT_color_buffer_float'));
         console.log(gl.getExtension('EXT_float_blend'));
+        */
         this.gl = gl;
         this.texture = tex;
         this.framebuffer = gl.createFramebuffer();

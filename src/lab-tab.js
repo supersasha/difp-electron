@@ -15,29 +15,13 @@ import { linspace, fill } from './generators';
 import { Matrix } from './matrix';
 import { Plot } from './plot';
 import { RGBColorBox, XYZColorBox } from './colorbox';
-import { srgbToXyz, xyzToSrgb } from './colors';
+import { srgbToXyz, xyzToSrgb, deltaE94Xyz } from './colors';
 
-import { Slider, Radio } from 'antd';
+import fs from 'fs';
+import { Slider, Radio, Button } from 'antd';
 import 'antd/dist/antd.css';
 
 import nlopt from 'nlopt-js';
-
-/*
-const segments = [
-    [ 18, 30 ], // 580-700 nm - red   / cyan
-    [  9, 18 ], // 490-580 nm - green / magenta
-    [  0,  9 ], // 400-490 nm - blue  / yellow
-];
-*/
-
-function calcCouplers(dyes, dyesMaxQs, h0) {
-    const couplers = [
-        [...fill(31, 0)],
-        [...fill(31, 0)],
-        [...fill(31, 0)],
-    ];
-    return Matrix.fromArray(couplers);
-}
 
 let _LabInst;
 class Lab {
@@ -49,23 +33,11 @@ class Lab {
     }
 
     constructor() {
-        this.paperGammas = Matrix.fromArray([[6, 6, 6]]);
-
-        /*
-        // gamma[x, y],
-        // where x - sensor, //segment
-        //       y - layer
-        this.filmGammas = Matrix.fromArray([
-            [ -0.8447,  0.1581,  0.0921 ],
-            [  0.1256, -1.0433,  0.1668 ],
-            [ -0.0122,  0.1356, -1.0807 ],
-        ]).transpose().map(neg).rowWise(div, this.paperGammas);
-        */
-        this.gammas = this.findGammas();
-        // filmGammas.get(sensor, layer)
-        this.filmGammas = this.gammas/*.map(neg)*/.rowWise(div, this.paperGammas);
-
-        console.log('film gammas:', this.filmGammas.show(4));
+        this.h0 = -2 // -2 for minimal curvature of gamma curves
+        this.inColors = [];
+        this.outColors = [];
+        const pg = 5.5;
+        this.paperGammas = Matrix.fromArray([[pg, pg, pg]]);
 
         const filmDsFile =
             "./data/kodak-vision3-50d-5203-2.datasheet";
@@ -92,7 +64,23 @@ class Lab {
         this.filmDyes = normalizedDyes(this.filmDs.dyes, this.projLight, 1.0);
         this.paperDyes = normalizedDyes(this.paperDs.dyes, this.reflLight, 1.0);
 
-        this.h0 = -5;
+        /*
+        // gamma[x, y],
+        // where x - sensor, //segment
+        //       y - layer
+        this.filmGammas = Matrix.fromArray([
+            [ -0.8447,  0.1581,  0.0921 ],
+            [  0.1256, -1.0433,  0.1668 ],
+            [ -0.0122,  0.1356, -1.0807 ],
+        ]).transpose().map(neg).rowWise(div, this.paperGammas);
+        */
+
+        this.gammas = this.findGammas();
+        // filmGammas.get(sensor, layer)
+        this.filmGammas = this.gammas/*.map(neg)*/.rowWise(div, this.paperGammas);
+
+        console.log('film gammas:', this.filmGammas.show(4));
+
         const qs = [];
         for (let layer = 0; layer < 3; layer++) {
             qs.push(this.findDyeQuantities(layer, this.h0));
@@ -130,6 +118,8 @@ class Lab {
         const rgb1 = xyzToSrgb(xyz1);
         console.log(`From XYZ ${xyz0.show()} get ${xyz1.show()}`);
         console.log(`From ${rgb0.show()} get ${rgb1.show()}`);
+
+        //this.findCorrs();
     }
 
     develop(xyz, corr) {
@@ -193,9 +183,8 @@ class Lab {
         return this.mtxD55.mmul(trans.transpose()).transpose();
     }
 
-    findGammas() {
-        // Mapping from dye quantities to exposure densities
-        const colors = [
+    testColors() {
+        return [
             //[[0, 0, 0], []],
             [[0.5, 0, 0], [-0.3897, -0.0938, -0.0563]],
             [[0, 0.5, 0], [-0.0281, -0.3874, -0.0713]],
@@ -204,35 +193,31 @@ class Lab {
             [[0, 1, 0], [-0.0646, -0.7432, -0.1307]],
             [[0, 0, 1], [-0.0040, -0.1161, -0.8092]],
             [[1.33, 0.59, 0], [-1.4152, -0.6232, -0.1995]],
-            [[0, 1.14, 1.09], [-0.0998, -0.9517, -0.9881]],
             [[1.32, 0, 1.09], [-1.2479, -0.3218, -0.9861]],
+            [[1.32, 1.29, 0], [-1.2095, -1.1084, -0.2866]],
+            [[0.58, 0.84, 0.0], [-0.5301, -0.7123, -0.1664]],
+            [[1.54, 0.0, 1.8], [-1.3268, -0.4243, -1.4027]],
+
+            // reds
+            [[0, 1.14, 1.09], [-0.0998, -0.9517, -0.9881]],
+            [[0.0, 1.82, 1.74], [-0.2047, -1.4659, -1.5213]],
+            [[0.0, 1.5, 1.89], [-0.1617, -1.2659, -1.5818]],
+
+            // grays
+            [[0.1, 0.1, 0.1], [-0.0258, -0.1186, -0.1126]],
             [[0.5, 0.5, 0.5], [-0.4209, -0.5208, -0.5124]],
             [[1, 1, 1], [-0.9169, -1.0187, -1.0099]],
             [[2, 2, 2], [-1.8939, -1.9989, -1.9965]],
-            [[1.32, 1.29, 0], [-1.2095, -1.1084, -0.2866]],
         ];
-        /*
-        const colors = [
-            [[0, 0, 0], [0.0000, 0.0000, 0.0000]],
-            [[0.5, 0, 0], [-0.6219, -0.1014, -0.0652]],
-            [[0, 0.5, 0], [-0.0573, -0.5112, -0.0828]],
-            [[0, 0, 0.5], [-0.0088, -0.0504, -0.4753]],
-            [[1, 0, 0], [-1.1959, -0.1930, -0.1245]],
-            [[0, 1, 0], [-0.1090, -0.9883, -0.1620]],
-            [[0, 0, 1], [-0.0176, -0.0956, -0.9301]],
-            [[1.33, 0.59, 0], [-1.6807, -0.8592, -0.2672]],
-            [[0, 1.14, 1.09], [-0.1416, -1.2469, -1.1997]],
-            [[1.32, 0, 1.09], [-1.5556, -0.3761, -1.1993]],
-            [[0.5, 0.5, 0.5], [-0.7051, -0.6824, -0.6351]],
-            [[1, 1, 1], [-1.3969, -1.3569, -1.2642]],
-            [[2, 2, 2], [-2.7389, -2.6802, -2.5027]],
-            [[1.32, 1.29, 0], [-1.8037, -1.5170, -0.3850]],
-        ];
-        */
+    }
+
+    findGammas() {
+        // Mapping from dye quantities to exposure densities
+        const colors = this.testColors();
         const cmyrgb = colors.map(([cmy, rgb]) => (
             [Matrix.fromArray([cmy]), Matrix.fromArray([rgb])]
         ));
-        const opt = nlopt.Optimize(nlopt.Algorithm.LN_PRAXIS, 9);
+        const opt = nlopt.Optimize(nlopt.Algorithm.LN_COBYLA, 9);
         opt.setMinObjective((x, grad) => {
             const mtx = Matrix.fromArray([
                 [x[0], x[1], x[2]],
@@ -259,10 +244,13 @@ class Lab {
             [x[3], x[4], x[5]],
             [x[6], x[7], x[8]],
         ]);
+        //const v = Matrix.fromArray([[x[9], x[10], x[11]]]);
         console.log(mtx.show(4));
         for (let i = 0; i < cmyrgb.length; i++) {
             const [cmy, rgb] = cmyrgb[i];
-            console.log(cmy.show(), rgb.show(), '-->', rgb.mmul(mtx).show());
+            console.log(cmy.show(), rgb.show(), '-->', rgb.mmul(mtx)/*.add(v)*/.show());
+            this.inColors.push(this.dyesToXyz(this.paperDyes, cmy));
+            this.outColors.push(this.dyesToXyz(this.paperDyes, rgb.mmul(mtx)/*.add(v)*/));
         }
         return mtx.transpose();
         //mtx.transpose().map(neg).rowWise(div, this.paperGammas);
@@ -270,17 +258,17 @@ class Lab {
 
     filmTransExpoDensityPaper(h, layer, sensor, chiFilmDyeLayer, qs) {
         let sp = this.filmDyes.row(layer).mul(chiFilmDyeLayer.at(h));
-        for (let i = 0; i < 3; i++) {
-            if (i === layer) {
+        for (let lr = 0; lr < 3; lr++) {
+            if (lr === layer) {
                 continue;
             }
-            sp = sp.add(this.filmDyes.row(i).mul(qs.getv(i) * (1 - chiFilmDyeLayer.at(h)/chiFilmDyeLayer.ymax)));
+            sp = sp.add(this.filmDyes.row(lr).mul(qs.getv(lr) * (1 - chiFilmDyeLayer.at(h)/chiFilmDyeLayer.ymax)));
         }
-        return logExposure(this.paperSense, layerTransmittance(sp, 1.0)).getv(sensor);
+        return logExposure(this.paperSense, layerTransmittance(sp, 1.0).elementWise(mul, this.projLight)).getv(sensor);
     }
 
     findDyeQuantities(layer, h0) {
-        const opt = nlopt.Optimize(nlopt.Algorithm.LN_PRAXIS, 3);
+        const opt = nlopt.Optimize(nlopt.Algorithm.LN_COBYLA, 3);
         opt.setMinObjective((x, grad) => {
             const qs = Matrix.fromArray([
                 [x[0], x[1], x[2]],
@@ -302,11 +290,50 @@ class Lab {
             }
             return s;
         }, 1e-10);
-        opt.setLowerBounds([...fill(3, 0)]);
+        opt.setLowerBounds([...fill(3, 0.001)]);
         opt.setUpperBounds([...fill(3, 4)]);
         const res = opt.optimize([...fill(3, 0.1)]);
-        //console.log(`Dye quantities (${layer}):`, res);
+        console.log(`Dye quantities (${layer}):`, res);
         return res.x;
+    }
+
+    findCorrs() {
+        const opt = nlopt.Optimize(nlopt.Algorithm.LN_COBYLA, 3);
+        const colors = this.testColors().map(([cmy, rgb]) => this.dyesToXyz(this.paperDyes, Matrix.fromArray([cmy])));
+        opt.setMinObjective((x, grad) => {
+            const corrs = Matrix.fromArray([
+                [x[0], x[1], x[2]],
+            ]);
+            let s = 0;
+            for (let xyz0 of colors) {
+                const xyz1 = this.develop(xyz0, corrs);
+                const d = deltaE94Xyz(xyz0, xyz1);
+                s += d*d;
+            }
+            console.log('****S:', s);
+            return s;
+        }, 1e-10);
+        opt.setLowerBounds([...fill(3, -5)]);
+        opt.setUpperBounds([...fill(3, 0)]);
+        const res = opt.optimize([...fill(3, -1.0)]);
+        console.log(`Corrs:`, res);
+        return res.x;
+    }
+
+    profile() {
+        return {
+            couplers: this.couplers.toArray(),
+            dev_light: this.devLight.toFlatArray(),
+            film_dyes: this.filmDyes.toArray(),
+            film_max_qs: [this.qs.get(0, 0), this.qs.get(1, 1), this.qs.get(2, 2)],
+            film_sense: this.filmSense.toArray(),
+            mtx_refl: this.mtxRefl.toArray(),
+            neg_gammas: [0, 0, 0], // no use
+            paper_dyes: this.paperDyes.toArray(),
+            paper_gammas: this.paperGammas.toFlatArray(),
+            paper_sense: this.paperSense.toArray(),
+            proj_light: this.projLight.toFlatArray(),
+        }
     }
 }
 
@@ -318,19 +345,7 @@ export function LabTab(props) {
     const [ corr, setCorr ] = useState(Matrix.fromArray([[0, 0, 0]]));
     
     const lab = Lab.instance();
-    const h0 = -5;
-    const chiFilmDyes = [
-        Chi.from(0, couplerQs.getv(0) / -h0, /*filmGammas.get(0, 0),*/ h0, 0),
-        Chi.from(0, couplerQs.getv(1) / -h0, /*filmGammas.get(1, 1),*/ h0, 0),
-        Chi.from(0, couplerQs.getv(2) / -h0, /*filmGammas.get(2, 2),*/ h0, 0),
-    ];
-
-    const filmDyesMaxQs = [
-        chiFilmDyes[0].ymax,
-        chiFilmDyes[1].ymax,
-        chiFilmDyes[2].ymax,
-    ];
-    const couplers = calcCouplers(lab.filmDyes, filmDyesMaxQs, h0);
+    const h0 = lab.h0;
 
     const xs = Matrix.fromArray([[...linspace(h0-1, 1, 100)]]);
 
@@ -340,16 +355,9 @@ export function LabTab(props) {
     const couplerStyles = [ 'red', 'green', 'blue' ];
 
     function expos(h, layer, sensor) {
-        //const filmLayerTrans = layerTransmittance(filmDyes.row(layer), chiFilmDyes[layer].at(h));
-        let sp = lab.filmDyes.row(layer).mul(chiFilmDyes[layer].at(h));
-        for (let i = 0; i < 3; i++) {
-            if (i === layer) {
-                continue;
-            }
-            sp = sp.add(lab.filmDyes.row(i).mul(couplerQs.getv(i) * (1 - chiFilmDyes[layer].at(h)/chiFilmDyes[layer].ymax)));
-        }
-        const le = logExposure(lab.paperSense/*paperSense???*/, layerTransmittance(sp, 1.0)).getv(sensor);
-        return le;
+        return lab.filmTransExpoDensityPaper(
+            h, layer, sensor, lab.chiFilm[layer], lab.qs.row(layer)
+        );
     }
 
     const hs = Matrix.fromArray([[...linspace(h0-1, 1, 100)]]);
@@ -381,6 +389,26 @@ export function LabTab(props) {
             <textarea readOnly rows="3" cols="25">
                 {lab.filmGammas.show(4)}
             </textarea>
+            <div style={{display: 'flex'}}>
+                {
+                    lab.inColors.map((c, i) => (
+                        <XYZColorBox key={i} size={50} xyz={c} />
+                    ))
+                }
+            </div>
+            <div style={{display: 'flex'}}>
+                {
+                    lab.outColors.map((c, i) => (
+                        <XYZColorBox key={i} size={50} xyz={c} />
+                    ))
+                }
+            </div>
+            <Button onClick={() => {
+                const data = JSON.stringify(lab.profile(), null, 4);
+                fs.writeFileSync('./data/new-profile.json', data);
+            }}>
+                Save profile
+            </Button>
             <div style={{display: 'flex'}}>
                 <div style={{width: '150px'}}>
                     <div>
@@ -415,33 +443,18 @@ export function LabTab(props) {
                     </div>
                 </div>
                 <div>
-                    <XYZColorBox
-                        size={150}
-                        x={xyzOfCmy.getv(0)}
-                        y={xyzOfCmy.getv(1)}
-                        z={xyzOfCmy.getv(2)}
-                    />
+                    <XYZColorBox size={150} xyz={xyzOfCmy} />
                     <div>{xyzOfCmy.show()}</div>
                     <div>{xyzToSrgb(xyzOfCmy).show()}</div>
                     <div>{Hcmy.show(4)}</div>
                 </div>
                 <div>
-                    <XYZColorBox
-                        size={150}
-                        x={xyzOfRefl.getv(0)}
-                        y={xyzOfRefl.getv(1)}
-                        z={xyzOfRefl.getv(2)}
-                    />
+                    <XYZColorBox size={150} xyz={xyzOfRefl} />
                     <div>{xyzOfRefl.show()}</div>
                     <div>{xyzToSrgb(xyzOfRefl).show()}</div>
                 </div>
                 <div>
-                    <XYZColorBox
-                        size={150}
-                        x={xyzOfReflD65.getv(0)}
-                        y={xyzOfReflD65.getv(1)}
-                        z={xyzOfReflD65.getv(2)}
-                    />
+                    <XYZColorBox size={150} xyz={xyzOfReflD65} />
                     <div>{xyzOfReflD65.show()}</div>
                     <div>{xyzToSrgb(xyzOfReflD65).show()}</div>
                 </div>
@@ -480,18 +493,8 @@ export function LabTab(props) {
                     </div>
                 </div>
                 <div>
-                    <XYZColorBox
-                        size={150}
-                        x={initXyz.getv(0)}
-                        y={initXyz.getv(1)}
-                        z={initXyz.getv(2)}
-                    />
-                    <XYZColorBox
-                        size={150}
-                        x={devXyz.getv(0)}
-                        y={devXyz.getv(1)}
-                        z={devXyz.getv(2)}
-                    />
+                    <XYZColorBox size={150} xyz={initXyz} />
+                    <XYZColorBox size={150} xyz={devXyz} />
                 </div>
             </div>
             <div style={{ display: 'flex' }}>
@@ -522,7 +525,7 @@ export function LabTab(props) {
                         },
                     ]}
                 />
-                <XYZColorBox size={200} x={xyz.getv(0)} y={xyz.getv(1)} z={xyz.getv(2)} />
+                <XYZColorBox size={200} xyz={xyz} />
             </div>
             <div style={{ display: 'flex' }}>
                 <div>

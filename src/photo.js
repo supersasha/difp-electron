@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Program, Texture, Framebuffer } from './glw';
+import { Program, Texture, Framebuffer, initExtensions } from './glw';
 import { loadRaw } from './libraw';
 import { A_1931_64_400_700_10nm } from './profiler';
 
@@ -8,7 +8,7 @@ const fs = require('fs');
 const erf = require('math-erf');
 
 const vertexShaderSource = fs.readFileSync('./shaders/main.vert');
-const fragmentShaderSource = fs.readFileSync('./shaders/main.frag');
+const fragmentShaderSource = fs.readFileSync('./shaders/main2.frag');
 
 const blurVertexShader = fs.readFileSync('./shaders/blur.vert');
 const blurFragmentShader = fs.readFileSync('./shaders/blur.frag');
@@ -17,7 +17,8 @@ const noiseVertexShader = fs.readFileSync('./shaders/noise.vert');
 const noiseFragmentShader = fs.readFileSync('./shaders/noise.frag');
 
 const spectrumData = JSON.parse(fs.readFileSync('./data/spectrum-d55-4.json'));
-const profileData = JSON.parse(fs.readFileSync('./data/b29-50d.json'));
+const profileData = JSON.parse(fs.readFileSync('./data/new-profile.json'));
+//const profileData = JSON.parse(fs.readFileSync('./data/b29-50d.json'));
 //const profileData = JSON.parse(fs.readFileSync('./data/prof1.json'));
 
 function blurKernel(rr, w, h) {
@@ -28,7 +29,7 @@ function blurKernel(rr, w, h) {
         };
     }
     const s = rr * Math.min(w, h) / 100;
-    const r = Math.ceil(3 * s);
+    const r = Math.min(Math.ceil(3 * s), 255);
     let d = [];
     const q = 1 / (Math.SQRT2 * s);
 
@@ -69,11 +70,17 @@ export function Photo() {
     const [darkroom, setDarkroom] = useState();
 
     useEffect(() => {
+        console.log('Effect 1');
         const canvas = ref.current;
         const gl = canvas.getContext('webgl2');
 
+        /*
         const ext1 = gl.getExtension('OES_texture_float_linear');
         const ext2 = gl.getExtension('EXT_color_buffer_float');
+        console.log(gl.getExtension('EXT_float_blend'));
+        */
+
+        initExtensions(gl);
 
         const mainProg = new Program(gl, vertexShaderSource, fragmentShaderSource);
         mainProg.setAttribute('a_position', [
@@ -145,6 +152,7 @@ export function Photo() {
                 this.mainProg.setUniform('u_userOptions', {
                     color_corr: uo.colorCorr,
                     film_exposure: uo.filmExposure,
+                    paper_exposure: uo.paperExposure,
                     paper_contrast: uo.paperContrast,
                     curve_smoo: uo.curveSmoo,
                 });
@@ -213,6 +221,12 @@ export function Photo() {
             }
         };
 
+        const resizeObserver = new ResizeObserver(() => {
+            resizeCanvasToDisplaySize(canvas);
+            _darkroom.run(userOptions);
+        });
+        resizeObserver.observe(canvas, {box: 'content-box'});
+
         setDarkroom(_darkroom);
     }, []);
 
@@ -222,7 +236,7 @@ export function Photo() {
         }
         const img = loadRaw(imagePath, { colorSpace: "xyz", halfSize: false });
         const texture = darkroom.image;
-        console.log(img);
+        //console.log(img);
         texture.setData(img.width, img.height, new Float32Array(img.image.buffer), {
             minFilter: texture.gl.LINEAR,
             magFilter: texture.gl.LINEAR,
@@ -232,19 +246,11 @@ export function Photo() {
 
     useEffect(() => {
         if (darkroom) {
-            /*
-            darkroom.mainProg.setUniform('u_userOptions', userOpts);
-            darkroom.mainProg.setUniform('u_maskThreshold', maskThreshold);
-            darkroom.mainProg.setUniform('u_maskDensity', maskDensity);
-            //darkroom.noiseProg.setUniform('u_seed', '#0');
-            darkroom.noiseProg.setUniform('u_sigma', noiseSigma);
-            darkroom.maskBlur = blurRadius;
-            darkroom.noiseBlur = noiseBlur;
-            */
             darkroom.run(userOptions);
         }
     });
 
+    /*
     useEffect(() => {
         if (darkroom) {
             const canvas = ref.current;
@@ -258,6 +264,7 @@ export function Photo() {
             };
         }
     });
+    */
 
     return (
         <canvas ref={ref} style={{

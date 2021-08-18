@@ -46,8 +46,8 @@ export function PhotoTab(props) {
                         <div>Red &#x2194; Cyan</div>
                         <Slider
                             min={0}
-                            max={1}
-                            step={0.01}
+                            max={3}
+                            step={0.001}
                             value={userOptions.colorCorr[0]}
                             onChange={value => {
                                 dispatch({
@@ -59,8 +59,8 @@ export function PhotoTab(props) {
                         <div>Green &#x2194; Magenta</div>
                         <Slider
                             min={0}
-                            max={1}
-                            step={0.01}
+                            max={3}
+                            step={0.001}
                             value={userOptions.colorCorr[1]}
                             onChange={value => {
                                 dispatch({
@@ -72,8 +72,8 @@ export function PhotoTab(props) {
                         <div>Blue &#x2194; Yellow</div>
                         <Slider
                             min={0}
-                            max={1}
-                            step={0.01}
+                            max={3}
+                            step={0.001}
                             value={userOptions.colorCorr[2]}
                             onChange={value => {
                                 dispatch({
@@ -92,6 +92,19 @@ export function PhotoTab(props) {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { filmExposure: value },
+                                })
+                            }}
+                        />
+                        <div>Paper Exposure</div>
+                        <Slider
+                            min={-5}
+                            max={5}
+                            step={0.001}
+                            value={userOptions.paperExposure}
+                            onChange={value => {
+                                dispatch({
+                                    type: 'main/setUserOptions',
+                                    payload: { paperExposure: value },
                                 })
                             }}
                         />

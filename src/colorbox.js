@@ -7,9 +7,14 @@ export function RGBColorBox(_props) {
         size: 100,
         red: 0,
         green: 0,
-        blue: 0
+        blue: 0,
     };
     const props = {...defaultProps, ..._props};
+    if (props.rgb instanceof Matrix) {
+        props.red = props.rgb.getv(0);
+        props.green = props.rgb.getv(1);
+        props.blue = props.rgb.getv(2);
+    }
     return (
         <div style={{
             width: props.size,
@@ -28,12 +33,13 @@ export function XYZColorBox(_props) {
         z: 0
     };
     const props = {...defaultProps, ..._props};
+    if (props.xyz instanceof Matrix) {
+        props.x = props.xyz.getv(0);
+        props.y = props.xyz.getv(1);
+        props.z = props.xyz.getv(2);
+    }
     const rgb = xyzToSrgb(Matrix.fromArray([[props.x, props.y, props.z]]));
     return (
-        <RGBColorBox size={props.size}
-            red={rgb.getv(0)}
-            green={rgb.getv(1)}
-            blue={rgb.getv(2)}
-        />
+        <RGBColorBox size={props.size} rgb={rgb} />
     );
 }
