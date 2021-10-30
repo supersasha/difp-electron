@@ -25,7 +25,7 @@ export function DevelopTab(props) {
     const [hCyan, setHCyan] = useState(0);
     const [hMagenta, setHMagenta] = useState(0);
     const [hYellow, setHYellow] = useState(0);
-    const rgb0 = Matrix.fromArray([lightness*red, lightness*green, lightness*blue]);
+    const rgb0 = Matrix.fromArray([[lightness*red, lightness*green, lightness*blue]]);
     const profile = JSON.parse(fs.readFileSync('./data/b29-50d.json'));
     const couplers = Matrix.fromArray(profile.couplers);
 
@@ -45,7 +45,7 @@ export function DevelopTab(props) {
     const xyz1 = dev.develop(xyz0);
     const rgb1 = xyzToSrgb(xyz1);
 
-    const spectrum31Xs = Matrix.fromArray([...linspace(400, 700, 31)]);
+    const spectrum31Xs = Matrix.fromArray([[...linspace(400, 700, 31)]]);
     const refl = dev.reflGen.reflOf(xyz0).map(x => x * 100);
     const spectrum = dev.reflGen.spectrumOf(xyz0);
 
@@ -58,7 +58,7 @@ export function DevelopTab(props) {
         Matrix.fromArray([[densCyan, densMagenta, densYellow]]));
     const exposD = logExposure(dev.filmSense, transD.elementWise((e1, e2) => e1 * e2, dev.devLight));
 
-    const h = Matrix.fromArray([hCyan, hMagenta, hYellow]);
+    const h = Matrix.fromArray([[hCyan, hMagenta, hYellow]]);
     const [devFilmDyes, devFilmCouplers] = dev.developFilmSep(h);
     const devFilm = devFilmDyes.add(devFilmCouplers);
 

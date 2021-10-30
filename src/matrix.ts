@@ -1,33 +1,32 @@
-class Matrix {
-    constructor(data, shape) {
+type MatrixShape = [number, number];
+
+export class Matrix {
+    data: Float64Array;
+    shape: MatrixShape;
+
+    constructor(data: Float64Array, shape: MatrixShape) {
         this.data = data;
         this.shape = shape;
     }
 
-    copy() {
+    copy(): Matrix {
         return new Matrix(new Float64Array(this.data), [...this.shape]);
     }
 
-    static fromArray(a) {
-        let shape = [];
-        let b = a;
-        while(Array.isArray(b)) {
-            shape.push(b.length);
-            b = b[0];
-        }
-        return new Matrix(new Float64Array(a.flat(shape.length)), shape);
+    static fromArray(a: number[][]): Matrix {
+        return new Matrix(new Float64Array(a.flat(2)), [a.length, a[0].length]);
     }
 
-    static fromTypedArray(a, shape) {
+    static fromTypedArray(a: any, shape: MatrixShape): Matrix {
         return new Matrix(a, shape);
     }
 
-    static empty(shape) {
+    static empty(shape: MatrixShape): Matrix {
         const size = shape.reduce((acc, s) => acc * s, 1);
         return new Matrix(new Float64Array(size), shape);
     }
 
-    static random(shape) {
+    static random(shape: MatrixShape): Matrix {
         const size = shape.reduce((acc, s) => acc * s, 1);
         const res = Matrix.empty(shape);
         for (let i = 0; i < size; i++) {
@@ -36,13 +35,13 @@ class Matrix {
         return res;
     }
 
-    static fill(shape, v) {
+    static fill(shape: MatrixShape, v: number): Matrix {
         const res = Matrix.empty(shape);
         res.data.fill(v);
         return res;
     }
 
-    toArray() {
+    toArray(): number[][] {
         const res = [];
         for (let row = 0; row < this.shape[0]; row++) {
             const a = [];
@@ -54,33 +53,33 @@ class Matrix {
         return res;
     }
 
-    toFlatArray() {
+    toFlatArray(): number[] {
         return [...this.data];
     }
 
-    size() {
+    size(): number {
         return this.shape.reduce((acc, e) => acc * e, 1);
     }
 
-    set(row, col, val) {
+    set(row: number, col: number, val: number): Matrix {
         this.data[row * this.shape[1] + col] = val;
         return this;
     }
 
-    get(row, col) {
+    get(row: number, col: number): number {
         return this.data[row * this.shape[1] + col];
     }
 
-    getv(i) {
+    getv(i: number): number {
         return this.data[i];
     }
 
-    setv(i, v) {
+    setv(i: number, v: number): Matrix {
         this.data[i] = v;
         return this;
     }
 
-    row(r) {
+    row(r: number): Matrix {
         const res = Matrix.empty([1, this.shape[1]]);
         for (let i = 0; i < this.shape[1]; i++) {
             res.data[i] = this.get(r, i);
@@ -88,7 +87,7 @@ class Matrix {
         return res;
     }
 
-    col(c) {
+    col(c: number): Matrix {
         const res = Matrix.empty([this.shape[0], 1]);
         for (let i = 0; i < this.shape[0]; i++) {
             res.data[i] = this.get(i, c);
@@ -96,15 +95,15 @@ class Matrix {
         return res;
     }
 
-    map(f) {
+    map(f: (x: number) => number): Matrix {
         return new Matrix(this.data.map(f), this.shape);
     }
 
-    reduce(f/*(acc, x)*/, acc0) {
+    reduce(f: (acc: number, e: number) => number, acc0: number): number {
         return this.data.reduce(f, acc0);
     }
 
-    elementWise(f, m) {
+    elementWise(f: (x1: number, x2: number) => number, m: Matrix): Matrix {
         if (this.shape[0] != m.shape[0] || this.shape[1] != m.shape[1]) {
             throw new Error(`Shapes don't match: ${this.shape} vs ${m.shape}`);
         }
@@ -116,7 +115,7 @@ class Matrix {
         return res;
     }
 
-    rowWise(f, v) {
+    rowWise(f: (x1: number, x2: number) => number, v: Matrix): Matrix {
         if (this.shape[0] !== v.size()) {
             throw `Vector size should be ${this.shape[0]} vs ${v.size()}`;
         }
@@ -129,7 +128,7 @@ class Matrix {
         return res;
     }
 
-    colWise(f, v) {
+    colWise(f: (x1: number, x2: number) => number, v: Matrix): Matrix {
         if (this.shape[1] !== v.size()) {
             throw `Vector size should be ${this.shape[1]} vs ${v.size()}`;
         }
@@ -142,7 +141,7 @@ class Matrix {
         return res;
     }
 
-    mmul(m) {
+    mmul(m: Matrix): Matrix {
         if (this.shape[1] !== m.shape[0]) {
             throw new Error(`Shapes don't allow matrix multiplication: ${this.shape} vs ${m.shape}`);
         }
@@ -159,7 +158,7 @@ class Matrix {
         return res;
     }
 
-    dot(v) {
+    dot(v: Matrix): number {
         if (this.shape[0] !== 1 && this.shape[1] !== 1) {
             throw new Error(`Dot: this is not vector, shape: ${this.shape}`);
         }
@@ -177,7 +176,7 @@ class Matrix {
         return s;
     }
 
-    show(precision = 2) {
+    show(precision = 2): string {
         let maxWidth = 0;
         for (let row = 0; row < this.shape[0]; row++) {
             for (let col = 0; col < this.shape[1]; col++) {
@@ -201,7 +200,7 @@ class Matrix {
         return lines;
     }
 
-    transpose() {
+    transpose(): Matrix {
         const res = Matrix.empty([this.shape[1], this.shape[0]]);
         for (let i = 0; i < this.shape[0]; i++) {
             for (let j = 0; j < this.shape[1]; j++) {
@@ -211,31 +210,27 @@ class Matrix {
         return res;
     }
 
-    add(m) {
+    add(m: Matrix): Matrix {
         return this.elementWise((e1, e2) => e1 + e2, m);
     }
 
-    sub(m) {
+    sub(m: Matrix): Matrix {
         return this.elementWise((e1, e2) => e1 - e2, m);
     }
 
-    div(m) {
+    div(m: Matrix): Matrix {
         return this.elementWise((e1, e2) => e1 / e2, m);
     }
 
-    mul(s) {
+    mul(s: number): Matrix {
         return this.map(e => s * e);
     }
 
-    reduce(f, acc0) {
-        return this.data.reduce(f, acc0);
+    sum(): number {
+        return this.reduce((acc: number, e: number) => acc + e, 0);
     }
 
-    sum() {
-        return this.reduce((acc, e) => acc + e, 0);
-    }
-
-    clip(low, high) {
+    clip(low: number, high: number): Matrix {
         return this.map(e => {
             if (e < low) {
                 return low;
@@ -247,7 +242,3 @@ class Matrix {
         });
     }
 }
-
-module.exports = {
-    Matrix
-};

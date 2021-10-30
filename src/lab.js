@@ -77,13 +77,13 @@ export class Lab {
         for (let layer = 0; layer < 3; layer++) {
             qs.push(this.findDyeQuantities(layer, this.h0));
         }
-        this.qs = Matrix.fromArray(qs);
+        this.qs = Matrix.fromArray([qs]);
         console.log('qs:', this.qs.show());
-        this.filmDyesQ = this.filmDyes.rowWise(mul, Matrix.fromArray([
+        this.filmDyesQ = this.filmDyes.rowWise(mul, Matrix.fromArray([[
             this.qs.get(0, 0),
             this.qs.get(1, 1),
             this.qs.get(2, 2),
-        ]));
+        ]]));
         this.couplers = Matrix.fromArray([
             this.filmDyes.row(1).mul(this.qs.get(0, 1)).add(this.filmDyes.row(2).mul(this.qs.get(0, 2))).toFlatArray(),
             this.filmDyes.row(0).mul(this.qs.get(1, 0)).add(this.filmDyes.row(2).mul(this.qs.get(1, 2))).toFlatArray(),

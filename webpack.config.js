@@ -9,7 +9,10 @@ module.exports = {
     },
     entry: {
         react: './src/index.js',
-        //webgl: './src/webgl.js',
+    },
+    devtool: 'inline-source-map',
+    resolve: {
+        extensions: ['.tsx', '.ts', '.js'],
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
@@ -25,29 +28,13 @@ module.exports = {
                 test: /\.css$/, 
                 use: ['style-loader', 'css-loader'] 
             },
-            /*
             {
-                test: /\.node$/,
-                loader: 'node-loader',
-                options: {
-                    flags: os.constants.dlopen.RTLD_NOW,
-                },
+                test: /\.tsx?$/,
+                use: 'ts-loader',
+                exclude: /node_modules/
             }
-            */
         ]
     },
-    /*
-    resolve: {
-        fallback: {
-            path: false
-        }
-    },
-    */
-/*
-    externals: {
-        bindings: 'require("bindings")' // fixes warnings during build
-    },
-    */
     mode: 'development',
     plugins: [
         new HtmlWebpackPlugin({

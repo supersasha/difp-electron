@@ -17,7 +17,7 @@ export function CouplersTab(props) {
     dev.makeCouplersFromMatrix(Matrix.fromArray([coupler, coupler, coupler]));
     dev.setup();
     
-    const h = Matrix.fromArray([hCyan, hMagenta, hYellow]);
+    const h = Matrix.fromArray([[hCyan, hMagenta, hYellow]]);
     const [devFilmDyes, devFilmCouplers] = dev.developFilmSep(h);
     const devFilm = devFilmDyes.add(devFilmCouplers);
 
