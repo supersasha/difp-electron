@@ -111,7 +111,7 @@ export function PhotoTab(props) {
                         <div>Paper Contrast</div>
                         <Slider
                             min={0.1}
-                            max={4}
+                            max={5}
                             step={0.1}
                             value={userOptions.paperContrast}
                             onChange={value => {
@@ -164,7 +164,7 @@ export function PhotoTab(props) {
                         <Slider
                             min={0}
                             max={3}
-                            step={0.01}
+                            step={0.001}
                             value={userOptions.maskDensity}
                             onChange={value => {
                                 dispatch({
@@ -176,8 +176,8 @@ export function PhotoTab(props) {
                         <div>Noise Sigma</div>
                         <Slider
                             min={0}
-                            max={0.2}
-                            step={0.001}
+                            max={0.02}
+                            step={0.0001}
                             value={userOptions.noiseSigma}
                             onChange={value => {
                                 dispatch({
