@@ -1,10 +1,10 @@
-export function initExtensions(gl) {
+export function initExtensions(gl: WebGL2RenderingContext): void {
     console.log(gl.getExtension('OES_texture_float_linear'));
     console.log(gl.getExtension('EXT_color_buffer_float'));
     console.log(gl.getExtension('EXT_float_blend'));
 }
 
-export function initUniform(gl, program, struct, path) {
+export function initUniform(gl: WebGL2RenderingContext, program: WebGLProgram, struct: any, path: string): void {
     if (Array.isArray(struct)) {
         const innerArray = path[path.length-1] === ']';
         for (let i = 0; i < struct.length; i++) {
@@ -35,7 +35,7 @@ export function initUniform(gl, program, struct, path) {
     }
 }
 
-function createShader(gl, type, source) {
+function createShader(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
@@ -47,7 +47,7 @@ function createShader(gl, type, source) {
     gl.deleteShader(shader);
 }
 
-function createProgram(gl, vertexShader, fragmentShader) {
+function createProgram(gl: WebGL2RenderingContext, vertexShader: WebGLShader, fragmentShader: WebGLShader): WebGLProgram {
     const program = gl.createProgram();
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
@@ -62,7 +62,12 @@ function createProgram(gl, vertexShader, fragmentShader) {
 }
 
 export class Program {
-    constructor(gl, vertexShaderSource, fragmentShaderSource) {
+    gl: WebGL2RenderingContext;
+    program: WebGLProgram;
+    vao: WebGLVertexArrayObject;
+    buffers: { [name: string]: WebGLBuffer };
+
+    constructor(gl: WebGL2RenderingContext, vertexShaderSource: string, fragmentShaderSource: string) {
         //gl.getExtension('OES_texture_float_linear');
         const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
         const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
@@ -73,7 +78,7 @@ export class Program {
         this.buffers = {};
     }
 
-    getBufferFor(attribName) {
+    getBufferFor(attribName: string): WebGLBuffer {
         const gl = this.gl;
         gl.useProgram(this.program);
         if (!this.buffers[attribName]) {
@@ -82,7 +87,7 @@ export class Program {
         return this.buffers[attribName];
     }
 
-    setAttribute(name, arr) {
+    setAttribute(name: string, arr: any[]): void {
         const gl = this.gl;
         gl.useProgram(this.program);
         gl.bindVertexArray(this.vao);
@@ -100,7 +105,7 @@ export class Program {
         gl.vertexAttribPointer(loc, size, type, normalize, stride, offset);
     }
 
-    setUniform(name, value) { // and also Texture if `value instanceof Texture`
+    setUniform(name: string, value: any): void { // and also Texture if `value instanceof Texture`
         const gl = this.gl;
         gl.useProgram(this.program);
         if (value instanceof Texture) {
@@ -111,7 +116,7 @@ export class Program {
         }
     }
 
-    run(target = null) { // Framebuffer | null
+    run(target: Framebuffer|null = null): void {
         const gl = this.gl;
         gl.useProgram(this.program);
         if (target) {
@@ -137,14 +142,26 @@ export class Program {
     }
 }
 
+export interface TextureDataOptions {
+    minFilter: number;
+    magFilter: number;
+    alpha: boolean;
+}
+
 export class Texture {
-    constructor(gl, unit) {
+    gl: WebGL2RenderingContext;
+    unit: number;
+    texture: WebGLTexture;
+    width: number;
+    height: number;
+
+    constructor(gl: WebGL2RenderingContext, unit: number) {
         this.gl = gl;
         this.unit = unit;
         this.texture = gl.createTexture();
     }
 
-    setData(width, height, data = null, options = {}) {
+    setData(width: number, height: number, data = null, options: Partial<TextureDataOptions> = {}): void {
         this.width = width;
         this.height = height;
         const gl = this.gl;
@@ -191,7 +208,11 @@ export class Texture {
 }
 
 export class Framebuffer {
-    constructor(gl, tex) {
+    gl: WebGL2RenderingContext;
+    texture: Texture;
+    framebuffer: WebGLFramebuffer;
+
+    constructor(gl: WebGL2RenderingContext, tex: Texture) {
         /*
         console.log(gl.getExtension('OES_texture_float_linear'));
         console.log(gl.getExtension('EXT_color_buffer_float'));

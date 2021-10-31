@@ -1,27 +1,28 @@
-import React, { useRef, useEffect, useState } from 'react';
+import * as React from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import { Program, Texture, Framebuffer, initExtensions } from './glw';
 import { loadRaw } from './libraw';
-import { A_1931_64_400_700_10nm } from './profiler';
+import { State, UserOptions } from './store';
 
-const fs = require('fs');
-const erf = require('math-erf');
+import * as fs from 'fs';
+import erf from 'math-erf';
 
-const vertexShaderSource = fs.readFileSync('./shaders/main.vert');
-const fragmentShaderSource = fs.readFileSync('./shaders/main2.frag');
+const vertexShaderSource = fs.readFileSync('./shaders/main.vert', { encoding: 'utf8' });
+const fragmentShaderSource = fs.readFileSync('./shaders/main2.frag', { encoding: 'utf8' });
 
-const blurVertexShader = fs.readFileSync('./shaders/blur.vert');
-const blurFragmentShader = fs.readFileSync('./shaders/blur.frag');
+const blurVertexShader = fs.readFileSync('./shaders/blur.vert', { encoding: 'utf8' });
+const blurFragmentShader = fs.readFileSync('./shaders/blur.frag', { encoding: 'utf8' });
 
-const noiseVertexShader = fs.readFileSync('./shaders/noise.vert');
-const noiseFragmentShader = fs.readFileSync('./shaders/noise.frag');
+const noiseVertexShader = fs.readFileSync('./shaders/noise.vert', { encoding: 'utf8' });
+const noiseFragmentShader = fs.readFileSync('./shaders/noise.frag', { encoding: 'utf8' });
 
-const spectrumData = JSON.parse(fs.readFileSync('./data/spectrum-d55-4.json'));
-const profileData = JSON.parse(fs.readFileSync('./data/new-profile.json'));
-//const profileData = JSON.parse(fs.readFileSync('./data/b29-50d.json'));
-//const profileData = JSON.parse(fs.readFileSync('./data/prof1.json'));
+const spectrumData = JSON.parse(fs.readFileSync('./data/spectrum-d55-4.json', { encoding: 'utf8' }));
+const profileData = JSON.parse(fs.readFileSync('./data/new-profile.json', { encoding: 'utf8' }));
+//const profileData = JSON.parse(fs.readFileSync('./data/b29-50d.json', { encoding: 'utf8' }));
+//const profileData = JSON.parse(fs.readFileSync('./data/prof1.json', { encoding: 'utf8' }));
 
-function blurKernel(rr, w, h) {
+function blurKernel(rr: number, w: number, h: number): { data: number[], size: string } {
     if (rr === 0) {
         return {
             data: [1],
@@ -43,7 +44,7 @@ function blurKernel(rr, w, h) {
     };
 }
 
-function resizeCanvasToDisplaySize(canvas) {
+function resizeCanvasToDisplaySize(canvas: HTMLCanvasElement): boolean {
     // Lookup the size the browser is displaying the canvas in CSS pixels.
     const displayWidth  = canvas.clientWidth;
     const displayHeight = canvas.clientHeight;
@@ -61,24 +62,27 @@ function resizeCanvasToDisplaySize(canvas) {
     return needResize;
 }
 
-export function Photo() {
+interface Darkroom {
+    gl: WebGL2RenderingContext;
+    mainProg: Program;
+    blurProg: Program;
+    noiseProg: Program;
+    image: Texture;
+    run: (userOptions: UserOptions) => void;
+}
+
+export function Photo(): React.ReactElement {
     //return <div>No photo (A. Ovchinnikov)</div>;
     const ref = useRef(null);
-    const imagePath = useSelector(state => state.imagePath);
-    const userOptions = useSelector(state => state.userOptions);
+    const imagePath = useSelector((state: State) => state.imagePath);
+    const userOptions = useSelector((state: State) => state.userOptions);
 
-    const [darkroom, setDarkroom] = useState();
+    const [darkroom, setDarkroom] = useState<Darkroom|undefined>();
 
     useEffect(() => {
         console.log('Effect 1');
         const canvas = ref.current;
         const gl = canvas.getContext('webgl2');
-
-        /*
-        const ext1 = gl.getExtension('OES_texture_float_linear');
-        const ext2 = gl.getExtension('EXT_color_buffer_float');
-        console.log(gl.getExtension('EXT_float_blend'));
-        */
 
         initExtensions(gl);
 
@@ -148,7 +152,7 @@ export function Photo() {
             blurProg,
             noiseProg,
             image,
-            run: function(uo) {
+            run: function(uo: UserOptions) {
                 this.mainProg.setUniform('u_userOptions', {
                     color_corr: uo.colorCorr,
                     film_exposure: uo.filmExposure,

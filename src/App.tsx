@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 import { PhotoTab } from './photo-tab';
 import { ProfileTab } from './profile-tab';
 import { DevelopTab } from './develop-tab';
@@ -8,12 +8,9 @@ import { Tabs } from 'antd';
 
 import 'antd/dist/antd.css';
 
-//import { profile } from './profiler';
-//profile();
-
 const { TabPane } = Tabs;
 
-function App() {
+function App(): React.ReactElement {
     return (
         <Tabs tabPosition="left" type="card">
             <TabPane tab="Photo" key="1">
@@ -34,4 +31,5 @@ function App() {
         </Tabs>
     );
 }
+
 export default App;

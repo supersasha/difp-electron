@@ -1,6 +1,6 @@
 import { Matrix } from './matrix';
 
-export function xyzToSrgb(c) {
+export function xyzToSrgb(c: Matrix): Matrix {
     const x = c.getv(0) / 100.0;
     const y = c.getv(1) / 100.0;
     const z = c.getv(2) / 100.0;
@@ -55,7 +55,7 @@ export function xyzToSrgb(c) {
     return Matrix.fromArray([[r, g, b]]);
 }
 
-export function srgbToXyz(c) {
+export function srgbToXyz(c: Matrix): Matrix {
     let r = c.getv(0);
     let g = c.getv(1);
     let b = c.getv(2);
@@ -93,7 +93,7 @@ const ref_x = 95.047;
 const ref_y = 100.0;
 const ref_z = 108.883;
 
-export function xyzToLab(c) {
+export function xyzToLab(c: Matrix): Matrix {
     let x = c.getv(0) / ref_x;
     let y = c.getv(1) / ref_y;
     let z = c.getv(2) / ref_z;
@@ -119,7 +119,7 @@ export function xyzToLab(c) {
     return Matrix.fromArray([[116.0 * y - 16.0, 500.0 * (x - y), 200.0 * (y - z)]]);
 }
 
-export function labToLch(c) {
+export function labToLch(c: Matrix): Matrix {
     return Matrix.fromArray([[
         c.getv(0),
         Math.hypot(c.getv(1), c.getv(2)),
@@ -127,11 +127,11 @@ export function labToLch(c) {
     ]]);
 }
 
-export function xyzToLch(c) {
+export function xyzToLch(c: Matrix): Matrix {
     return labToLch(xyzToLab(c));
 }
 
-export function deltaE94Xyz(xyz1, xyz2) {
+export function deltaE94Xyz(xyz1: Matrix, xyz2: Matrix): number {
     const lch1 = xyzToLch(xyz1);
     const lch2 = xyzToLch(xyz2);
     const KL = 1;
@@ -143,7 +143,7 @@ export function deltaE94Xyz(xyz1, xyz2) {
     return Math.sqrt(d1*d1 + d2*d2 + d3*d3);
 }
 
-export function chromaticity(xyz) {
+export function chromaticity(xyz: Matrix): Matrix {
     const v = xyz.reduce((acc, x) => acc + x, 0);
     if (Math.abs(v) < 1e-10) {
         return Matrix.fromArray([[1/3, 1/3]]);

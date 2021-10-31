@@ -1,8 +1,16 @@
-import React from 'react';
+import * as React from 'react';
 import { Matrix } from './matrix';
 import { xyzToSrgb } from './colors';
 
-export function RGBColorBox(_props) {
+export interface RGBColorBoxProps {
+    size: number;
+    red: number;
+    green: number;
+    blue: number;
+    rgb: Matrix;
+}
+
+export function RGBColorBox(_props: Partial<RGBColorBoxProps>): React.ReactElement {
     const defaultProps = {
         size: 100,
         red: 0,
@@ -25,7 +33,15 @@ export function RGBColorBox(_props) {
     );
 }
 
-export function XYZColorBox(_props) {
+export interface XYZColorBoxProps {
+    size: number;
+    x: number;
+    y: number;
+    z: number;
+    xyz: Matrix;
+}
+
+export function XYZColorBox(_props: Partial<XYZColorBoxProps>): React.ReactElement {
     const defaultProps = {
         size: 100,
         x: 0,

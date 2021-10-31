@@ -1,7 +1,25 @@
 import { createStore } from 'redux';
 import { createSlice } from '@reduxjs/toolkit';
 
-const initialState = {
+export interface UserOptions {
+    colorCorr: [number, number, number];
+    filmExposure: number;
+    paperExposure: number;
+    paperContrast: number;
+    curveSmoo: number;
+    maskBlur: number;
+    maskThreshold: number;
+    maskDensity: number;
+    noiseSigma: number;
+    noiseBlur: number;
+}
+
+export interface State {
+    imagePath?: string;
+    userOptions: UserOptions;
+}
+
+const initialState: State = {
     imagePath: undefined,
     userOptions: {
         colorCorr: [0.0, 0.23, 0.1],

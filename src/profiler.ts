@@ -1,23 +1,20 @@
-import fs from 'fs';
-import nlopt from 'nlopt-js';
+import * as nlopt from 'nlopt-js';
 
 import { Matrix } from './matrix';
 import {
     daylightSpectrum,
-    dyeDensity,
     exposure,
     normalizedDyes,
-    normalizedDyesQs,
     normalizedSense,
     transmittance,
     transmittanceToXyzMtx,
-
     ReflGen,
 } from './spectrum';
-import { log10, Chi } from './math';
-import { loadDatasheet, loadSpectrumData } from './data';
+import { log10, bell, Chi } from './math';
+import { loadDatasheet, loadSpectrumData, Datasheet, SpectrumData } from './data';
+import { deltaE94Xyz } from './colors';
 
-function referenceColors() {
+function referenceColors(): [Matrix, number][] {
     const colors = [
         [12.08, 19.77, 16.28, 1],
         [20.86, 12.00, 17.97, 1],
@@ -45,6 +42,25 @@ const N_GAUSSIAN_PARAMS = 3 * N_GAUSSIANS;
 const N_PARAMS = N_FREE_PARAMS + N_GAUSSIAN_PARAMS;
 
 export class Developer {
+    private devLight: Matrix;
+    private projLight: Matrix;
+    private reflLight: Matrix;
+    private kfmax: number;
+    private kpmax: number;
+    private filmds: Datasheet;
+    private paperds: Datasheet;
+    private reflGen: ReflGen;
+    private mtxRefl: Matrix;
+    private mtxReflD55: Matrix;
+    private filmSense: Matrix;
+    private filmDyes: Matrix;
+    private paperDyes0: Matrix;
+    private paperDyes: Matrix;
+    private paperSense: Matrix;
+    private chiFilm: [Chi, Chi, Chi];
+    private chiPaper: [Chi, Chi, Chi];
+    private couplers: Matrix;
+
     constructor() {
         this.devLight = daylightSpectrum(5500);
         this.projLight = daylightSpectrum(5500);
@@ -100,17 +116,17 @@ export class Developer {
     }
     */
 
-    dyesToXyz(dyes, qs) {
+    dyesToXyz(dyes: Matrix, qs: Matrix): Matrix {
         const trans = transmittance(dyes, qs);
         return this.mtxRefl.mmul(trans.transpose()).transpose();
     }
     
-    dyesToXyzD55(dyes, qs) {
+    dyesToXyzD55(dyes: Matrix, qs: Matrix): Matrix {
         const trans = transmittance(dyes, qs);
         return this.mtxReflD55.mmul(trans.transpose()).transpose();
     }
 
-    develop(xyz) {
+    develop(xyz: Matrix): Matrix {
         const sp = this.reflGen.spectrumOf(xyz);
         const H = exposure(this.filmSense, sp).map(log10);
         const negative = this.developFilm(H);
@@ -118,7 +134,7 @@ export class Developer {
         return this.dyesToXyz(positive, Matrix.fill([1, 3], 1));
     }
 
-    developFilmSep(H) {
+    developFilmSep(H: Matrix): [Matrix, Matrix] {
         const dev = Matrix.fromArray([[
             this.chiFilm[0].get(H.getv(0)),
             this.chiFilm[1].get(H.getv(1)),
@@ -134,13 +150,12 @@ export class Developer {
         return [developedDyes, developedCouplers];
     }
 
-    developFilm(H) {
+    developFilm(H: Matrix): Matrix {
         const [developedDyes, developedCouplers] = this.developFilmSep(H);
         return developedDyes.add(developedCouplers);
     }
 
-    developPaper(negative) {
-        const ymax = 4;
+    developPaper(negative: Matrix): Matrix {
         const trans = transmittance(negative, Matrix.fill([1, 3], 1));
         const sp = trans.elementWise((e1, e2) => e1 * e2, this.projLight);
 
@@ -154,7 +169,7 @@ export class Developer {
         return this.paperDyes.rowWise((e1, e2) => e1 * e2, dev);
     }
 
-    beta(D) {
+    beta(D: number): Matrix {
         const alpha = D;
         const kfs = Matrix.fromArray([[
             this.chiFilm[0].get(alpha),
@@ -172,7 +187,7 @@ export class Developer {
         return res;
     }
     
-    delta(D) {
+    delta(D: number): number {
         const betas = this.beta(D);
         const kps = Matrix.fromArray([[
             this.chiPaper[0].get(betas.getv(0)),
@@ -182,8 +197,8 @@ export class Developer {
         const refl = kps.map(e => -e).mmul(this.paperDyes0).map(e => Math.pow(10, e));
         return log10(this.reflLight.sum() / this.reflLight.dot(refl));
     }
-    
-    makeCouplers(qs) {
+
+    makeCouplers(qs: Matrix): void {
         const B = N_FREE_PARAMS; // Number of params not accounting gaussians
         const G = N_GAUSSIANS; // Number of gaussians (3 params each) in each (of 3) layer
         this.couplers = Matrix.fill([3, 31], 0);
@@ -200,19 +215,22 @@ export class Developer {
 
     // Alternative to makeCouplers()
     // couplers - matrix 3x31
-    makeCouplersFromMatrix(couplers) {
+    makeCouplersFromMatrix(couplers: Matrix): void {
         this.couplers = couplers;
     }
 }
 
 class Solver {
+    xyzs: [Matrix, number][];
+    dev: Developer;
+    solution: Matrix;
+
     constructor() {
         this.xyzs = referenceColors();
         this.dev = new Developer();
     }
 
-    solveFun(qs, print = false)
-    {
+    solveFun(qs: Matrix, print = false): number {
         this.dev.makeCouplers(qs);
         this.dev.setup();
         let d = 0;
@@ -228,7 +246,7 @@ class Solver {
         return d;
     }
 
-    solve() {
+    solve(): void {
         const opt = nlopt.Optimize(nlopt.Algorithm.GN_ISRES, N_PARAMS);
         //nlopt_set_population(opt, 5000);
         const solver = this;
@@ -286,13 +304,14 @@ class Solver {
     }
 }
 
-export async function profile() {
+export async function profile(): Promise<void> {
     await nlopt.ready;
     const solver = new Solver();
     solver.solve();
     solver.solveFun(solver.solution, true);
 }
 
+/*
 export async function test() {
     await nlopt.ready;
     console.log(A_1931_64_400_700_10nm.show());
@@ -309,4 +328,4 @@ export async function test() {
     const reflGen = new ReflGen(sd);
     console.log(reflGen.spectrumOf(Matrix.fromArray([[0.5, 0.5, 0.5]])));
 }
-
+*/
