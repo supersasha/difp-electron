@@ -42,20 +42,20 @@ const N_GAUSSIAN_PARAMS = 3 * N_GAUSSIANS;
 const N_PARAMS = N_FREE_PARAMS + N_GAUSSIAN_PARAMS;
 
 export class Developer {
-    private devLight: Matrix;
+    devLight: Matrix;
     private projLight: Matrix;
     private reflLight: Matrix;
     private kfmax: number;
     private kpmax: number;
     private filmds: Datasheet;
     private paperds: Datasheet;
-    private reflGen: ReflGen;
+    reflGen: ReflGen;
     private mtxRefl: Matrix;
     private mtxReflD55: Matrix;
-    private filmSense: Matrix;
+    filmSense: Matrix;
     private filmDyes: Matrix;
-    private paperDyes0: Matrix;
-    private paperDyes: Matrix;
+    paperDyes0: Matrix;
+    paperDyes: Matrix;
     private paperSense: Matrix;
     private chiFilm: [Chi, Chi, Chi];
     private chiPaper: [Chi, Chi, Chi];

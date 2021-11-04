@@ -1,5 +1,5 @@
 import nlopt from 'nlopt-js';
-import { loadDatasheet, loadSpectrumData } from './data';
+import { loadDatasheet, loadSpectrumData, Datasheet } from './data';
 import { srgbToXyz, xyzToSrgb, deltaE94Xyz } from './colors';
 import { fill } from './generators';
 import {
@@ -13,16 +13,40 @@ import {
     transmittanceToXyzMtx,
 } from './spectrum';
 import { Matrix } from './matrix';
-import { neg, mul, div, Chi, sub, add } from './math';
+import { mul, div, sub, Chi } from './math';
 
-let _LabInst;
+let _LabInst: Lab;
 export class Lab {
-    static instance() {
+    static instance(): Lab {
         if (!_LabInst) {
             _LabInst = new Lab();
         }
         return _LabInst;
     }
+
+    h0: number;
+    inColors: Matrix[];
+    outColors: Matrix[];
+    private paperGammas: Matrix;
+    private filmDs: Datasheet;
+    private paperDs: Datasheet;
+    reflGen: ReflGen;
+    private devLight: Matrix;
+    projLight: Matrix;
+    private reflLight: Matrix;
+    private mtxRefl: Matrix;
+    private mtxD55: Matrix;
+    filmSense: Matrix;
+    paperSense: Matrix;
+    private filmDyes: Matrix;
+    paperDyes: Matrix;
+    private gammas: Matrix;
+    filmGammas: Matrix;
+    qs: Matrix;
+    //private filmDyesQ: Matrix;
+    couplers: Matrix;
+    chiFilm: [Chi, Chi, Chi];
+    private chiPaper: [Chi, Chi, Chi];
 
     constructor() {
         this.h0 = -2 // -2 for minimal curvature of gamma curves
@@ -77,13 +101,15 @@ export class Lab {
         for (let layer = 0; layer < 3; layer++) {
             qs.push(this.findDyeQuantities(layer, this.h0));
         }
-        this.qs = Matrix.fromArray([qs]);
+        this.qs = Matrix.fromArray(qs);
         console.log('qs:', this.qs.show());
+        /*
         this.filmDyesQ = this.filmDyes.rowWise(mul, Matrix.fromArray([[
             this.qs.get(0, 0),
             this.qs.get(1, 1),
             this.qs.get(2, 2),
         ]]));
+        */
         this.couplers = Matrix.fromArray([
             this.filmDyes.row(1).mul(this.qs.get(0, 1)).add(this.filmDyes.row(2).mul(this.qs.get(0, 2))).toFlatArray(),
             this.filmDyes.row(0).mul(this.qs.get(1, 0)).add(this.filmDyes.row(2).mul(this.qs.get(1, 2))).toFlatArray(),
@@ -114,7 +140,7 @@ export class Lab {
         //this.findCorrs();
     }
 
-    develop(xyz, corr) {
+    develop(xyz: Matrix, corr: Matrix): Matrix {
         const sp = this.reflGen.spectrumOf(xyz);
         console.log('sp:', sp.show());
         const H = logExposure(this.filmSense, sp);
@@ -126,12 +152,12 @@ export class Lab {
         return this.dyesToXyz(positive, Matrix.fill([1, 3], 1));
     }
 
-    developFilm(H) {
+    developFilm(H: Matrix): Matrix {
         const [developedDyes, developedCouplers] = this.developFilmSep(H);
         return developedDyes.add(developedCouplers);
     }
 
-    developFilmSep(H) {
+    developFilmSep(H: Matrix): [Matrix, Matrix] {
         const dev = Matrix.fromArray([[
             this.chiFilm[0].get(H.getv(0)),
             this.chiFilm[1].get(H.getv(1)),
@@ -147,7 +173,7 @@ export class Lab {
         return [developedDyes, developedCouplers];
     }
     
-    developPaper(negative, corr) {
+    developPaper(negative: Matrix, corr: Matrix): Matrix {
         const trans = transmittance(negative, Matrix.fill([1, 3], 1));
         console.log('neg trans:', trans.show());
         const sp = trans.elementWise((e1, e2) => e1 * e2, this.projLight);
@@ -165,17 +191,17 @@ export class Lab {
         return this.paperDyes.rowWise((e1, e2) => e1 * e2, dev);
     }
 
-    dyesToXyz(dyes, qs) {
+    dyesToXyz(dyes: Matrix, qs: Matrix): Matrix {
         const trans = transmittance(dyes, qs);
         return this.mtxRefl.mmul(trans.transpose()).transpose();
     }
 
-    dyesToXyzD55(dyes, qs) {
+    dyesToXyzD55(dyes: Matrix, qs: Matrix): Matrix {
         const trans = transmittance(dyes, qs);
         return this.mtxD55.mmul(trans.transpose()).transpose();
     }
 
-    testColors() {
+    testColors(): [[number, number, number], [number, number, number]][] {
         return [
             //[[0, 0, 0], []],
             [[0.5, 0, 0], [-0.3897, -0.0938, -0.0563]],
@@ -204,7 +230,7 @@ export class Lab {
         ];
     }
 
-    findGammas() {
+    findGammas(): Matrix {
         // Mapping from dye quantities to exposure densities
         const colors = this.testColors();
         const cmyrgb = colors.map(([cmy, rgb]) => (
@@ -249,7 +275,7 @@ export class Lab {
         //mtx.transpose().map(neg).rowWise(div, this.paperGammas);
     }
 
-    filmTransExpoDensityPaper(h, layer, sensor, chiFilmDyeLayer, qs) {
+    filmTransExpoDensityPaper(h: number, layer: number, sensor: number, chiFilmDyeLayer: Chi, qs: Matrix): number {
         let sp = this.filmDyes.row(layer).mul(chiFilmDyeLayer.at(h));
         for (let lr = 0; lr < 3; lr++) {
             if (lr === layer) {
@@ -260,7 +286,7 @@ export class Lab {
         return logExposure(this.paperSense, layerTransmittance(sp, 1.0).elementWise(mul, this.projLight)).getv(sensor);
     }
 
-    findDyeQuantities(layer, h0) {
+    findDyeQuantities(layer: number, h0: number): [number, number, number] {
         const opt = nlopt.Optimize(nlopt.Algorithm.LN_COBYLA, 3);
         opt.setMinObjective((x, grad) => {
             const qs = Matrix.fromArray([
@@ -290,7 +316,7 @@ export class Lab {
         return res.x;
     }
 
-    findCorrs() {
+    findCorrs(): [number, number, number] {
         const opt = nlopt.Optimize(nlopt.Algorithm.LN_COBYLA, 3);
         const colors = this.testColors().map(([cmy, rgb]) => this.dyesToXyz(this.paperDyes, Matrix.fromArray([cmy])));
         opt.setMinObjective((x, grad) => {

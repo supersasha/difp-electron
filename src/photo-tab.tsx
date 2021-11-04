@@ -1,8 +1,9 @@
-import React from 'react';
+import * as React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Switch, Slider, Tabs } from 'antd';
+import { Button, Slider } from 'antd';
 import { Photo } from './photo';
 const { dialog, BrowserWindow } = require('electron').remote;
+import { State } from './store';
 
 import 'antd/dist/antd.css';
 
@@ -14,10 +15,10 @@ function toggleDevTools() {
     }
 }
 
-export function PhotoTab(props) {
+export function PhotoTab(): React.ReactElement {
     const dispatch = useDispatch();
-    const imagePath = useSelector(state => state.imagePath);
-    const userOptions = useSelector(state => state.userOptions);
+    const imagePath = useSelector((state: State) => state.imagePath);
+    const userOptions = useSelector((state: State) => state.userOptions);
 
     return (
         <>
@@ -49,7 +50,7 @@ export function PhotoTab(props) {
                             max={3}
                             step={0.001}
                             value={userOptions.colorCorr[0]}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setColor',
                                     payload: { red: value },
@@ -62,7 +63,7 @@ export function PhotoTab(props) {
                             max={3}
                             step={0.001}
                             value={userOptions.colorCorr[1]}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setColor',
                                     payload: { green: value },
@@ -75,7 +76,7 @@ export function PhotoTab(props) {
                             max={3}
                             step={0.001}
                             value={userOptions.colorCorr[2]}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setColor',
                                     payload: { blue: value },
@@ -88,7 +89,7 @@ export function PhotoTab(props) {
                             max={5}
                             step={0.1}
                             value={userOptions.filmExposure}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { filmExposure: value },
@@ -101,7 +102,7 @@ export function PhotoTab(props) {
                             max={5}
                             step={0.001}
                             value={userOptions.paperExposure}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { paperExposure: value },
@@ -114,7 +115,7 @@ export function PhotoTab(props) {
                             max={5}
                             step={0.1}
                             value={userOptions.paperContrast}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { paperContrast: value },
@@ -127,7 +128,7 @@ export function PhotoTab(props) {
                             max={0.40}
                             step={0.01}
                             value={userOptions.curveSmoo}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { curveSmoo: value },
@@ -140,7 +141,7 @@ export function PhotoTab(props) {
                             max={10}
                             step={0.01}
                             value={userOptions.maskBlur}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { maskBlur: value },
@@ -153,7 +154,7 @@ export function PhotoTab(props) {
                             max={5}
                             step={0.01}
                             value={userOptions.maskThreshold}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { maskThreshold: value },
@@ -166,7 +167,7 @@ export function PhotoTab(props) {
                             max={3}
                             step={0.001}
                             value={userOptions.maskDensity}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { maskDensity: value },
@@ -179,7 +180,7 @@ export function PhotoTab(props) {
                             max={0.02}
                             step={0.0001}
                             value={userOptions.noiseSigma}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { noiseSigma: value },
@@ -192,7 +193,7 @@ export function PhotoTab(props) {
                             max={0.3}
                             step={0.001}
                             value={userOptions.noiseBlur}
-                            onChange={value => {
+                            onChange={(value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { noiseBlur: value },

@@ -1,6 +1,7 @@
-import React from 'react';
+import * as React from 'react';
 import { ProfilePlot } from './plot';
-export function ProfileTab(props) {
+
+export function ProfileTab(): React.ReactElement {
     return (
         <>
             <div style={{ display: 'flex' }}>

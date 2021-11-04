@@ -1,20 +1,21 @@
 import { Button, Switch, Slider, Tabs } from 'antd';
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import 'antd/dist/antd.css';
 
-import fs from 'fs';
+import * as fs from 'fs';
 
 import { Matrix } from './matrix';
 import { xyzToSrgb, srgbToXyz,} from './colors';
 import { logExposure, transmittance } from './spectrum';
 import { Developer } from './profiler';
-import { Plot, Spectrum31Plot, linspace } from './plot';
-import { fill } from './generators';
+import { Plot, Spectrum31Plot } from './plot';
+import { fill, linspace } from './generators';
 import { RGBColorBox } from './colorbox';
 
-import nlopt from 'nlopt-js';
+import * as nlopt from 'nlopt-js';
 
-export function DevelopTab(props) {
+export function DevelopTab(): React.ReactElement {
     const [red, setRed] = useState(0);
     const [green, setGreen] = useState(0);
     const [blue, setBlue] = useState(0);
@@ -26,7 +27,7 @@ export function DevelopTab(props) {
     const [hMagenta, setHMagenta] = useState(0);
     const [hYellow, setHYellow] = useState(0);
     const rgb0 = Matrix.fromArray([[lightness*red, lightness*green, lightness*blue]]);
-    const profile = JSON.parse(fs.readFileSync('./data/b29-50d.json'));
+    const profile = JSON.parse(fs.readFileSync('./data/b29-50d.json', { encoding: 'utf8' }));
     const couplers = Matrix.fromArray(profile.couplers);
 
     const dev = new Developer();
@@ -294,13 +295,13 @@ export function DevelopTab(props) {
                                     [x[6], x[7], x[8]],
                                 ]);
                                 const v = Matrix.fromArray([[x[9], x[10], x[11]]]);
-                                function log10(v) {
+                                function log10(v: number): number {
                                     return Math.log(v) / Math.LN10;
                                 }
                                 for (let i = 0; i < n; i++) {
                                     const [cmy, xyz] = xyzs[i];
-                                    const cmy1 = cmy.map(x => -log10(x));
-                                    console.log(cmy1.show(), xyz.show(), '-->', xyz.mmul(mtx).add(v).map(x => Math.pow(10, -x)).show());
+                                    const cmy1 = cmy.map((x: number) => -log10(x));
+                                    console.log(cmy1.show(), xyz.show(), '-->', xyz.mmul(mtx).add(v).map((x: number) => Math.pow(10, -x)).show());
                                 }
                             }}>
                                 opt mtx

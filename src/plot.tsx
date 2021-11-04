@@ -1,20 +1,32 @@
-import React, { useRef, useEffect, useState } from 'react';
+import * as React from 'react';
+import { useRef, useEffect } from 'react';
 import { Matrix } from './matrix';
-import fs from 'fs';
-
-export function *linspace(from, to, steps) {
-    if (steps < 2) {
-        return;
-    }
-    const d = (to - from) / (steps - 1);
-    for (let i = 0; i < steps; i++) {
-        yield from + d * i;
-    }
-}
+import * as fs from 'fs';
+import { linspace } from './generators';
 
 const xs = Matrix.fromArray([[...linspace(-10, 10, 10000)]]);
 
-const defaultProps = {
+export interface PlotSpec {
+    xs: number[];
+    ys: number[];
+    style: string;
+}
+
+export interface PlotProps {
+    containerStyle: any;
+    plotMargin: number;
+    xrange: 'auto' | [number, number];
+    yrange: 'auto' | [number, number];
+    plots: PlotSpec[];
+    xmarks: number;
+    xmarkFormat: string;
+    ymarks: number;
+    ymarkFormat: string;
+    title: string;
+    lineWidth: number;
+}
+
+const defaultProps: PlotProps = {
     containerStyle: {},
     plotMargin: 60,
     xrange: 'auto', // 'auto' | [x0, x1]
@@ -44,13 +56,13 @@ const defaultProps = {
     lineWidth: 1,
 };
 
-export function Plot(_props) {
+export function Plot(_props: Partial<PlotProps>): React.ReactElement {
     const props = { ...defaultProps, ..._props };
     const containerRef = useRef(null);
     const canvasRef = useRef(null);
 
-    function draw(ctx) {
-        function format(n, f) {
+    function draw(ctx: CanvasRenderingContext2D): void {
+        function format(n: number, f: string): string {
             let parts = f.split(':');
             return n.toFixed(parseInt(parts[1]));
         }
@@ -196,7 +208,16 @@ export function Plot(_props) {
     );
 }
 
-export function Spectrum31Plot(props) {
+export interface Spectrum31PlotSpec {
+    ys: number[];
+    style: string;
+}
+
+export interface Spectrum31PlotProps extends PlotProps {
+    data: Spectrum31PlotSpec[];
+}
+
+export function Spectrum31Plot(props: Partial<Spectrum31PlotProps>): React.ReactElement {
     const xs = [...linspace(400, 700, 31)];
     return (
         <Plot
@@ -214,8 +235,13 @@ export function Spectrum31Plot(props) {
     );
 }
 
-export function ProfilePlot(props) {
-    const data = JSON.parse(fs.readFileSync(props.path))[props.what];
+export interface ProfilePlotProps extends Spectrum31PlotProps {
+    path: string;
+    what: string;
+}
+
+export function ProfilePlot(props: Partial<ProfilePlotProps>): React.ReactElement {
+    const data = JSON.parse(fs.readFileSync(props.path, { encoding: 'utf8' }))[props.what];
     return (
         <Spectrum31Plot
             {...props}

@@ -8,7 +8,7 @@ module.exports = {
         __dirname: false,
     },
     entry: {
-        react: './src/index.js',
+        react: './src/index.tsx',
     },
     devtool: 'inline-source-map',
     resolve: {

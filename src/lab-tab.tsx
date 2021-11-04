@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { add } from './math';
+import * as React from 'react';
+import { useState } from 'react';
 import {
     daylightSpectrum,
     logExposure,
@@ -9,16 +9,16 @@ import {
 import { linspace } from './generators';
 import { Matrix } from './matrix';
 import { Plot } from './plot';
-import { RGBColorBox, XYZColorBox } from './colorbox';
+import { XYZColorBox } from './colorbox';
 import { xyzToSrgb } from './colors';
 
-import fs from 'fs';
+import * as fs from 'fs';
 import { Slider, Radio, Button } from 'antd';
 import 'antd/dist/antd.css';
 
 import { Lab } from './lab';
 
-function BlockRow(props) {
+function BlockRow(props): React.ReactElement {
     return (
         <div style={{ display: 'flex' }}>
             { props.children }
@@ -26,7 +26,12 @@ function BlockRow(props) {
     );
 }
 
-function MatrixDisp(props) {
+interface MatrixDispProps {
+    mtx: Matrix;
+    precision?: number;
+}
+
+function MatrixDisp(props: MatrixDispProps): React.ReactElement {
     const precision = props.precision || 2;
     const [nrows, ncols] = props.mtx.shape;
     const rows = [];
@@ -51,7 +56,12 @@ function MatrixDisp(props) {
     );
 }
 
-function CMYSliders(props) {
+interface CMYSlidersProps {
+    cmy: Matrix;
+    setCmy: (cmy: Matrix) => void;
+}
+
+function CMYSliders(props: CMYSlidersProps): React.ReactElement {
     return (
         <div style={{width: '150px'}}>
             <div>
@@ -61,7 +71,7 @@ function CMYSliders(props) {
                     max={4}
                     step={0.01}
                     value={props.cmy.getv(0)}
-                    onChange={v => props.setCmy(props.cmy.copy().setv(0, v))}
+                    onChange={(v: number) => props.setCmy(props.cmy.copy().setv(0, v))}
                 />
             </div>
             <div>
@@ -71,7 +81,7 @@ function CMYSliders(props) {
                     max={4}
                     step={0.01}
                     value={props.cmy.getv(1)}
-                    onChange={v => props.setCmy(props.cmy.copy().setv(1, v))}
+                    onChange={(v: number) => props.setCmy(props.cmy.copy().setv(1, v))}
                 />
             </div>
             <div>
@@ -81,7 +91,7 @@ function CMYSliders(props) {
                     max={4}
                     step={0.01}
                     value={props.cmy.getv(2)}
-                    onChange={v => props.setCmy(props.cmy.copy().setv(2, v))}
+                    onChange={(v: number) => props.setCmy(props.cmy.copy().setv(2, v))}
                 />
             </div>
         </div>

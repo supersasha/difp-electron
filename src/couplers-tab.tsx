@@ -1,13 +1,15 @@
-import { Button, Switch, Slider, Tabs } from 'antd';
-import React, { useState } from 'react';
+import { Slider } from 'antd';
+import * as React from 'react';
+import { useState } from 'react';
 import 'antd/dist/antd.css';
 
-import { xyzToSrgb, srgbToXyz, Developer } from './profiler';
+import { Developer } from './profiler';
 import { Matrix } from './matrix';
-import { linspace, Spectrum31Plot } from './plot';
+import { Spectrum31Plot } from './plot';
+import { linspace } from './generators';
 import { fill } from './generators';
 
-export function CouplersTab(props) {
+export function CouplersTab(): React.ReactElement {
     const [coupler, setCoupler] = useState([...fill(31, 0)]);
     const [hCyan, setHCyan] = useState(0);
     const [hMagenta, setHMagenta] = useState(0);
@@ -33,7 +35,7 @@ export function CouplersTab(props) {
                                     max={1}
                                     step={0.01}
                                     value={coupler[i]}
-                                    onChange={v => {
+                                    onChange={(v: number) => {
                                         const newCoupler = [...coupler];
                                         newCoupler[i] = v;
                                         setCoupler(newCoupler);
