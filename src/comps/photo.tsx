@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { useRef, useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Program, Texture, Framebuffer, initExtensions } from './glw';
-import { loadRaw } from './libraw';
-import { State, UserOptions } from './store';
+import { Program, Texture, Framebuffer, initExtensions } from '../glw';
+import { loadRaw } from '../libraw';
+import { State, UserOptions } from '../store';
 
 import * as fs from 'fs';
 import erf from 'math-erf';
