@@ -1,16 +1,16 @@
-import { Button, Switch, Slider, Tabs } from 'antd';
+import { Button, Slider } from 'antd';
 import * as React from 'react';
 import { useState } from 'react';
 import 'antd/dist/antd.css';
 
 import * as fs from 'fs';
 
-import { Matrix } from './matrix';
-import { xyzToSrgb, srgbToXyz,} from './colors';
-import { logExposure, transmittance } from './spectrum';
-import { Developer } from './profiler';
+import { Matrix } from '../matrix';
+import { xyzToSrgb, srgbToXyz,} from '../colors';
+import { logExposure, transmittance } from '../spectrum';
+import { Developer } from '../profiler';
 import { Plot, Spectrum31Plot } from './plot';
-import { fill, linspace } from './generators';
+import { fill, linspace } from '../generators';
 import { RGBColorBox } from './colorbox';
 
 import * as nlopt from 'nlopt-js';

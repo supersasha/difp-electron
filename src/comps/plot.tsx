@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { useRef, useEffect } from 'react';
-import { Matrix } from './matrix';
+import { Matrix } from '../matrix';
 import * as fs from 'fs';
-import { linspace } from './generators';
+import { linspace } from '../generators';
 
 const xs = Matrix.fromArray([[...linspace(-10, 10, 10000)]]);
 

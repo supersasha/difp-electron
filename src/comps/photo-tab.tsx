@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button, Slider } from 'antd';
-import { Photo } from './photo';
+import { Photo } from '../photo';
 const { dialog, BrowserWindow } = require('electron').remote;
-import { State } from './store';
+import { State } from '../store';
 
 import 'antd/dist/antd.css';
 

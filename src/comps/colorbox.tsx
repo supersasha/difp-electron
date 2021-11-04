@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { Matrix } from './matrix';
-import { xyzToSrgb } from './colors';
+import { Matrix } from '../matrix';
+import { xyzToSrgb } from '../colors';
 
 export interface RGBColorBoxProps {
     size: number;

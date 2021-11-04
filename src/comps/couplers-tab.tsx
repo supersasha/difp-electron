@@ -3,11 +3,10 @@ import * as React from 'react';
 import { useState } from 'react';
 import 'antd/dist/antd.css';
 
-import { Developer } from './profiler';
-import { Matrix } from './matrix';
+import { Developer } from '../profiler';
+import { Matrix } from '../matrix';
 import { Spectrum31Plot } from './plot';
-import { linspace } from './generators';
-import { fill } from './generators';
+import { linspace, fill } from '../generators';
 
 export function CouplersTab(): React.ReactElement {
     const [coupler, setCoupler] = useState([...fill(31, 0)]);

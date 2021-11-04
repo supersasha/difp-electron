@@ -5,18 +5,18 @@ import {
     logExposure,
     transmittance,
     transmittanceToXyzMtx,
-} from './spectrum';
-import { linspace } from './generators';
-import { Matrix } from './matrix';
+} from '../spectrum';
+import { linspace } from '../generators';
+import { Matrix } from '../matrix';
 import { Plot } from './plot';
 import { XYZColorBox } from './colorbox';
-import { xyzToSrgb } from './colors';
+import { xyzToSrgb } from '../colors';
 
 import * as fs from 'fs';
 import { Slider, Radio, Button } from 'antd';
 import 'antd/dist/antd.css';
 
-import { Lab } from './lab';
+import { Lab } from '../lab';
 
 function BlockRow(props): React.ReactElement {
     return (
