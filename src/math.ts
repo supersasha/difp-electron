@@ -78,3 +78,16 @@ export class Chi {
     }
 }
 
+export interface Rect {
+    width: number;
+    height: number;
+}
+
+export function inscribedRect(w: number, h: number, ratio: number): Rect {
+    if (ratio * h < w) {
+        return { width: Math.floor(ratio * h), height: h };
+    } else {
+        return { width: w, height: Math.floor(w / ratio) };
+    }
+}
+

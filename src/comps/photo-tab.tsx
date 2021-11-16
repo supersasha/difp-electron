@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Button, Slider } from 'antd';
-import { Photo } from './photo';
+import { RawPhotoFileLoader, FilmProcessor } from './photo';
 const { dialog, BrowserWindow } = require('electron').remote;
 import { State } from '../store';
 
@@ -23,7 +23,7 @@ export function PhotoTab(): React.ReactElement {
     return (
         <>
             <div style={{display: 'flex', width: '100%'}}>
-                <Photo />
+                <RawPhotoFileLoader path={imagePath} processor={FilmProcessor} />
                 <div style={{backgroundColor: '#eee', padding: '20px'}}>
                     <div>
                         <div>{imagePath || 'No image loaded'}</div>
@@ -98,8 +98,8 @@ export function PhotoTab(): React.ReactElement {
                         />
                         <div>Paper Exposure</div>
                         <Slider
-                            min={-5}
-                            max={5}
+                            min={0.0}
+                            max={0.4}
                             step={0.001}
                             value={userOptions.paperExposure}
                             onChange={(value: number) => {
@@ -164,7 +164,7 @@ export function PhotoTab(): React.ReactElement {
                         <div>Mask Density</div>
                         <Slider
                             min={0}
-                            max={3}
+                            max={0.1}
                             step={0.001}
                             value={userOptions.maskDensity}
                             onChange={(value: number) => {
