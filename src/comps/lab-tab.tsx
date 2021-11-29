@@ -13,8 +13,9 @@ import { XYZColorBox } from './colorbox';
 import { xyzToSrgb } from '../colors';
 
 import * as fs from 'fs';
-import { Slider, Radio, Button } from 'antd';
-import 'antd/dist/antd.css';
+//import { Radio } from 'antd';
+import { Slider, Button, Radio, RadioGroup } from '@blueprintjs/core';
+//import 'antd/dist/antd.css';
 
 import { Lab } from '../lab';
 
@@ -69,7 +70,7 @@ function CMYSliders(props: CMYSlidersProps): React.ReactElement {
                 <Slider
                     min={0}
                     max={4}
-                    step={0.01}
+                    stepSize={0.01}
                     value={props.cmy.getv(0)}
                     onChange={(v: number) => props.setCmy(props.cmy.copy().setv(0, v))}
                 />
@@ -79,7 +80,7 @@ function CMYSliders(props: CMYSlidersProps): React.ReactElement {
                 <Slider
                     min={0}
                     max={4}
-                    step={0.01}
+                    stepSize={0.01}
                     value={props.cmy.getv(1)}
                     onChange={(v: number) => props.setCmy(props.cmy.copy().setv(1, v))}
                 />
@@ -89,7 +90,7 @@ function CMYSliders(props: CMYSlidersProps): React.ReactElement {
                 <Slider
                     min={0}
                     max={4}
-                    step={0.01}
+                    stepSize={0.01}
                     value={props.cmy.getv(2)}
                     onChange={(v: number) => props.setCmy(props.cmy.copy().setv(2, v))}
                 />
@@ -198,7 +199,7 @@ export function LabTab(props) {
                             <Slider
                                 min={-5}
                                 max={5}
-                                step={0.01}
+                                stepSize={0.01}
                                 value={corr.getv(0)}
                                 onChange={v => setCorr(corr.copy().setv(0, v))}
                             />
@@ -208,7 +209,7 @@ export function LabTab(props) {
                             <Slider
                                 min={-5}
                                 max={5}
-                                step={0.01}
+                                stepSize={0.01}
                                 value={corr.getv(1)}
                                 onChange={v => setCorr(corr.copy().setv(1, v))}
                             />
@@ -218,7 +219,7 @@ export function LabTab(props) {
                             <Slider
                                 min={-5}
                                 max={5}
-                                step={0.01}
+                                stepSize={0.01}
                                 value={corr.getv(2)}
                                 onChange={v => setCorr(corr.copy().setv(2, v))}
                             />
@@ -265,17 +266,20 @@ export function LabTab(props) {
                         <Slider
                             min={-5}
                             max={0}
-                            step={0.01}
+                            stepSize={0.01}
                             value={logexp}
                             onChange={setLogexp}
                             vertical
                         />
                         <div>
-                            <Radio.Group value={devColor} style={{ display: 'flex', flexDirection: 'column' }} onChange={ e => setDevColor(e.target.value) }>
-                                <Radio.Button value={0} style={{ color: 'red' }}>R</Radio.Button>
-                                <Radio.Button value={1} style={{ color: 'green' }}>G</Radio.Button>
-                                <Radio.Button value={2} style={{ color: 'blue' }}>B</Radio.Button>
-                            </Radio.Group>
+                            {/*style={{ display: 'flex', flexDirection: 'column' }}*/}
+                            <RadioGroup selectedValue={devColor} onChange={(e) => {
+                                setDevColor(parseInt(e.currentTarget.value))
+                            }}>
+                                <Radio label="R" value={0} style={{ color: 'red' }}/>
+                                <Radio label="G" value={1} style={{ color: 'green' }}/>
+                                <Radio label="B" value={2} style={{ color: 'blue' }}/>
+                            </RadioGroup>
                         </div>
                     </div>
                 </div>
@@ -314,7 +318,7 @@ export function LabTab(props) {
                             <Slider
                                 min={0}
                                 max={5}
-                                step={0.01}
+                                stepSize={0.01}
                                 value={couplerQs.getv(0)}
                                 onChange={v => setCouplerQs(Matrix.fromArray([[v, couplerQs.getv(1), couplerQs.getv(2)]]))}
                                 vertical
@@ -325,7 +329,7 @@ export function LabTab(props) {
                             <Slider
                                 min={0}
                                 max={5}
-                                step={0.01}
+                                stepSize={0.01}
                                 value={couplerQs.getv(1)}
                                 onChange={v => setCouplerQs(Matrix.fromArray([[couplerQs.getv(0), v, couplerQs.getv(2)]]))}
                                 vertical
@@ -336,7 +340,7 @@ export function LabTab(props) {
                             <Slider
                                 min={0}
                                 max={5}
-                                step={0.01}
+                                stepSize={0.01}
                                 value={couplerQs.getv(2)}
                                 onChange={v => setCouplerQs(Matrix.fromArray([[couplerQs.getv(0), couplerQs.getv(1), v]]))}
                                 vertical

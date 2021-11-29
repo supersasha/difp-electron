@@ -1,11 +1,14 @@
 import * as React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Slider } from 'antd';
+//import { Slider } from 'antd';
+// import { Slider } from '@blueprintjs/core';
 import { RawPhotoFileLoader, FilmProcessor } from './photo';
 const { dialog, BrowserWindow } = require('electron').remote;
 import { State } from '../store';
+//import { Button } from '@blueprintjs/core';
+import { Button, Slider, Stack } from '@mui/material';
 
-import 'antd/dist/antd.css';
+//import 'antd/dist/antd.css';
 
 function toggleDevTools() {
     try {
@@ -26,22 +29,30 @@ export function PhotoTab(): React.ReactElement {
                 <RawPhotoFileLoader path={imagePath} processor={FilmProcessor} />
                 <div style={{backgroundColor: '#eee', padding: '20px'}}>
                     <div>
-                        <div>{imagePath || 'No image loaded'}</div>
-                        <Button onClick={toggleDevTools}>Toggle dev tools</Button>
-                        <Button onClick={() => {
-                            const res = dialog.showOpenDialogSync(BrowserWindow.getFocusedWindow(), {
-                                defaultPath: imagePath,
-                                properties: ['openFile'],
-                            });
-                            if (!res) {
-                                return;
-                            }
-                            const [path] = res;
-                            dispatch({
-                                type: 'main/setImagePath',
-                                payload: path,
-                            });
-                        }}>Load image</Button>
+                        <div style={{
+                            overflow: 'hidden',
+                            width: '350px',
+                            whiteSpace: 'nowrap',
+                            textOverflow: 'ellipsis',
+                            direction: 'rtl'
+                        }}>{imagePath || 'No image loaded'}</div>
+                        <Stack direction="row" spacing={1}>
+                            <Button onClick={toggleDevTools} variant="outlined">Toggle dev tools</Button>
+                            <Button onClick={() => {
+                                const res = dialog.showOpenDialogSync(BrowserWindow.getFocusedWindow(), {
+                                    defaultPath: imagePath,
+                                    properties: ['openFile'],
+                                });
+                                if (!res) {
+                                    return;
+                                }
+                                const [path] = res;
+                                dispatch({
+                                    type: 'main/setImagePath',
+                                    payload: path,
+                                });
+                            }} variant="contained">Load image</Button>
+                        </Stack>
                     </div>
                     <div>
                         <div>Red &#x2194; Cyan</div>
@@ -50,7 +61,8 @@ export function PhotoTab(): React.ReactElement {
                             max={3}
                             step={0.001}
                             value={userOptions.colorCorr[0]}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setColor',
                                     payload: { red: value },
@@ -63,7 +75,8 @@ export function PhotoTab(): React.ReactElement {
                             max={3}
                             step={0.001}
                             value={userOptions.colorCorr[1]}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setColor',
                                     payload: { green: value },
@@ -76,7 +89,8 @@ export function PhotoTab(): React.ReactElement {
                             max={3}
                             step={0.001}
                             value={userOptions.colorCorr[2]}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setColor',
                                     payload: { blue: value },
@@ -89,7 +103,8 @@ export function PhotoTab(): React.ReactElement {
                             max={5}
                             step={0.1}
                             value={userOptions.filmExposure}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { filmExposure: value },
@@ -102,7 +117,8 @@ export function PhotoTab(): React.ReactElement {
                             max={0.4}
                             step={0.001}
                             value={userOptions.paperExposure}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { paperExposure: value },
@@ -115,7 +131,8 @@ export function PhotoTab(): React.ReactElement {
                             max={5}
                             step={0.1}
                             value={userOptions.paperContrast}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { paperContrast: value },
@@ -128,7 +145,8 @@ export function PhotoTab(): React.ReactElement {
                             max={0.40}
                             step={0.01}
                             value={userOptions.curveSmoo}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { curveSmoo: value },
@@ -141,7 +159,8 @@ export function PhotoTab(): React.ReactElement {
                             max={10}
                             step={0.01}
                             value={userOptions.maskBlur}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { maskBlur: value },
@@ -154,7 +173,8 @@ export function PhotoTab(): React.ReactElement {
                             max={5}
                             step={0.01}
                             value={userOptions.maskThreshold}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { maskThreshold: value },
@@ -167,7 +187,8 @@ export function PhotoTab(): React.ReactElement {
                             max={0.1}
                             step={0.001}
                             value={userOptions.maskDensity}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { maskDensity: value },
@@ -180,7 +201,8 @@ export function PhotoTab(): React.ReactElement {
                             max={0.02}
                             step={0.0001}
                             value={userOptions.noiseSigma}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { noiseSigma: value },
@@ -193,7 +215,8 @@ export function PhotoTab(): React.ReactElement {
                             max={0.3}
                             step={0.001}
                             value={userOptions.noiseBlur}
-                            onChange={(value: number) => {
+                            valueLabelDisplay="auto"
+                            onChange={(e: Event, value: number) => {
                                 dispatch({
                                     type: 'main/setUserOptions',
                                     payload: { noiseBlur: value },

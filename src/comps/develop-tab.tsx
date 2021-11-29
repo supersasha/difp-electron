@@ -1,7 +1,7 @@
 import { Button, Slider } from 'antd';
 import * as React from 'react';
 import { useState } from 'react';
-import 'antd/dist/antd.css';
+//import 'antd/dist/antd.css';
 
 import * as fs from 'fs';
 

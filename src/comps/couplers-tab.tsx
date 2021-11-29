@@ -1,7 +1,7 @@
 import { Slider } from 'antd';
 import * as React from 'react';
 import { useState } from 'react';
-import 'antd/dist/antd.css';
+//import 'antd/dist/antd.css';
 
 import { Developer } from '../profiler';
 import { Matrix } from '../matrix';

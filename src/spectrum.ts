@@ -5,10 +5,6 @@ import * as nlopt from 'nlopt-js';
 
 import { SpectrumData } from './data';
 
-(async function() {
-    await nlopt.ready;
-})();
-
 export const A_1931_64_400_700_10nm = Matrix.fromArray([
     [ 0.0191097, 0.0020044, 0.0860109 ],
     [ 0.084736, 0.008756, 0.389366 ],

@@ -206,6 +206,7 @@ export function FilmProcessor(props: PhotoProcessorProps): React.ReactElement {
         mainProg.setUniform('u_noise', texVertBlurNoise);
         mainProg.setUniform('u_userOptions.mode', '#10');
         mainProg.run();
+        gl.flush();
     }, [img, userOptions]);
 
     const borderWidth = 20;
@@ -251,6 +252,19 @@ export function FilmProcessor(props: PhotoProcessorProps): React.ReactElement {
     );
 }
 
+let lastAnimationFrameHandle;
+
+function requestAnimationFrameLastOnly(f) {
+    if (lastAnimationFrameHandle) {
+        console.log(`Cancelling previous animation frame request`);
+        cancelAnimationFrame(lastAnimationFrameHandle);
+    }
+    lastAnimationFrameHandle = requestAnimationFrame(() => {
+        f();
+        lastAnimationFrameHandle = undefined;
+    });
+}
+
 export function CanvasWebGL2(props): React.ReactElement {
     const defaultInit = () => {};
     const defaultDraw = () => {};
@@ -264,7 +278,9 @@ export function CanvasWebGL2(props): React.ReactElement {
     useEffect(() => {
         const canvas = ref.current;
         const gl = canvas.getContext('webgl2');
-        draw(gl);
+        requestAnimationFrameLastOnly(() => {
+            draw(gl);
+        });
     }, [draw]);
     useEffect(() => {
         const canvas = ref.current;
@@ -273,7 +289,9 @@ export function CanvasWebGL2(props): React.ReactElement {
                 console.log(`Re-drawing as canvas size changed:`,
                     cv.contentBoxSize[0].blockSize, cv.contentBoxSize[0].inlineSize);
                 const gl = canvas.getContext('webgl2');
-                draw(gl);
+                requestAnimationFrameLastOnly(() => {
+                    draw(gl);
+                });
             }
         });
         resizeObserver.observe(canvas, {box: 'content-box'});
