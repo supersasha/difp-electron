@@ -2,7 +2,8 @@ import * as React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 //import { Slider } from 'antd';
 // import { Slider } from '@blueprintjs/core';
-import { RawPhotoFileLoader, FilmProcessor } from './photo';
+//import { RawPhotoFileLoader, FilmProcessor } from './photo';
+import { Photo } from './photo';
 const { dialog, BrowserWindow } = require('electron').remote;
 import { State } from '../store';
 //import { Button } from '@blueprintjs/core';
@@ -26,7 +27,8 @@ export function PhotoTab(): React.ReactElement {
     return (
         <>
             <div style={{display: 'flex', width: '100%'}}>
-                <RawPhotoFileLoader path={imagePath} processor={FilmProcessor} />
+                {/*<RawPhotoFileLoader path={imagePath} processor={FilmProcessor} />*/}
+                <Photo path={imagePath} options={userOptions}/>
                 <div style={{backgroundColor: '#eee', padding: '20px'}}>
                     <div>
                         <div style={{

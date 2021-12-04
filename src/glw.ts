@@ -161,6 +161,10 @@ export class Texture {
         this.texture = gl.createTexture();
     }
 
+    dispose() {
+        this.gl.deleteTexture(this.texture);
+    }
+
     setData(width: number, height: number, data = null, options: Partial<TextureDataOptions> = {}): void {
         this.width = width;
         this.height = height;
@@ -213,11 +217,6 @@ export class Framebuffer {
     framebuffer: WebGLFramebuffer;
 
     constructor(gl: WebGL2RenderingContext, tex: Texture) {
-        /*
-        console.log(gl.getExtension('OES_texture_float_linear'));
-        console.log(gl.getExtension('EXT_color_buffer_float'));
-        console.log(gl.getExtension('EXT_float_blend'));
-        */
         this.gl = gl;
         this.texture = tex;
         this.framebuffer = gl.createFramebuffer();
@@ -225,6 +224,10 @@ export class Framebuffer {
         const attachmentPoint = gl.COLOR_ATTACHMENT0;
         gl.framebufferTexture2D(
             gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, tex.texture, 0);
+    }
+
+    dispose() {
+        this.gl.deleteFramebuffer(this.framebuffer);
     }
 }
 

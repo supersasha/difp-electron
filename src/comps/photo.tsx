@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { useSelector } from 'react-redux';
+//import { useSelector } from 'react-redux';
 import { Program, Texture, Framebuffer, initExtensions } from '../glw';
 import { loadRaw } from '../libraw';
 import { State, UserOptions } from '../store';
@@ -68,158 +68,214 @@ interface Darkroom {
     blurProg?: Program;
     noiseProg?: Program;
     image?: Texture;
-    run?: any;
-    gl?: any;
+    //run?: any;
+    //gl?: any;
 }
 
+/*
 export interface RawPhotoProps {
     path?: string;
     processor: (props: PhotoProcessorProps) => React.ReactElement;
 }
-
-export function RawPhotoFileLoader(props: RawPhotoProps): React.ReactElement {
-    const { path, processor } = props;
-    const Processor = processor;
-    if (path) {
-        const img = useMemo(
-            () => loadRaw(path, { colorSpace: "xyz", halfSize: false }),
-            [path]
-        );
-        return (<Processor img={img} />);
-    } else {
-        return (<NoPhoto />);
-    }
+ */
+export interface PhotoProps {
+    path: string;
+    options: UserOptions;
 }
 
-export interface PhotoProcessorProps {
-    img: any; // TODO
+function initPhoto(gl: WebGL2RenderingContext, imgPath: string, darkroom: Darkroom): void {
+    console.log('Running init');
+    const img = loadRaw(imgPath, { colorSpace: "xyz", halfSize: false });
+    initExtensions(gl);
+    const position = [[-1, -1], [-1,  1], [ 1,  1], [-1, -1], [ 1, -1], [ 1,  1]];
+    const texCoord = [[0, 1], [0, 0], [1, 0], [0, 1], [1, 1], [1, 0]];
+
+    darkroom.mainProg = new Program(gl, vertexShaderSource, fragmentShaderSource);
+    darkroom.mainProg.setAttribute('a_position', position);
+    darkroom.mainProg.setAttribute('a_texCoord', texCoord);
+    darkroom.mainProg.setUniform('u_spectrumData', spectrumData);
+    darkroom.mainProg.setUniform('u_profileData', profileData);
+    //mainProg.setUniform('u_userOptions', userOpts);
+
+    darkroom.image = new Texture(gl, 0);
+    darkroom.image.setData(img.width, img.height, new Float32Array(img.image.buffer), {
+        minFilter: gl.LINEAR,
+        magFilter: gl.LINEAR,
+        alpha: false,
+    });
+    darkroom.mainProg.setUniform('u_image', darkroom.image);
+
+    darkroom.blurProg = new Program(gl, blurVertexShader, blurFragmentShader);
+    darkroom.blurProg.setAttribute('a_position', position);
+    darkroom.blurProg.setAttribute('a_texCoord', texCoord);
+
+    darkroom.noiseProg = new Program(gl, noiseVertexShader, noiseFragmentShader);
+    darkroom.noiseProg.setAttribute('a_position', position);
+    darkroom.noiseProg.setAttribute('a_texCoord', texCoord);
 }
 
-export function FilmProcessor(props: PhotoProcessorProps): React.ReactElement {
-    const { img } = props;
-    const userOptions = useSelector((state: State) => state.userOptions);
-    const darkroomRef = useRef({});
+function drawPhoto(gl: WebGL2RenderingContext, darkroom: Darkroom, userOptions: UserOptions): void {
+    const { mainProg, noiseProg, blurProg } = darkroom;
+    console.log('Running draw', mainProg.gl === gl);
+    mainProg.setUniform('u_userOptions', {
+        color_corr: userOptions.colorCorr,
+        film_exposure: userOptions.filmExposure,
+        paper_exposure: userOptions.paperExposure,
+        paper_contrast: userOptions.paperContrast,
+        curve_smoo: userOptions.curveSmoo,
+    });
+    mainProg.setUniform('u_maskThreshold', userOptions.maskThreshold);
+    mainProg.setUniform('u_maskDensity', userOptions.maskDensity);
+    //noiseProg.setUniform('u_seed', '#0');
+    noiseProg.setUniform('u_sigma', userOptions.noiseSigma);
+
+    const texNoise = new Texture(gl, 1);
+    texNoise.setData(gl.canvas.width, gl.canvas.height);
+    const fbNoise = new Framebuffer(gl, texNoise);
+
+    noiseProg.run(fbNoise);
+
+    const texMask = new Texture(gl, 2);
+    texMask.setData(gl.canvas.width, gl.canvas.height);
+    const fbMask = new Framebuffer(gl, texMask);
+
+    mainProg.setUniform('u_userOptions.mode', '#9');
+    mainProg.run(fbMask);
+
+    const texHorzBlurMask = new Texture(gl, 3);
+    texHorzBlurMask.setData(gl.canvas.width, gl.canvas.height);
+    const fbHorzBlurMask = new Framebuffer(gl, texHorzBlurMask);
+    
+    let kernel = blurKernel(
+        userOptions.maskBlur, gl.canvas.width, gl.canvas.height
+    );
+    blurProg.setUniform('u_kernel', kernel);
+
+    blurProg.setUniform('u_vert', false);
+    blurProg.setUniform('u_image', texMask);
+    blurProg.run(fbHorzBlurMask);
+
+    const texVertBlurMask = new Texture(gl, 4);
+    texVertBlurMask.setData(gl.canvas.width, gl.canvas.height);
+    const fbVertBlurMask = new Framebuffer(gl, texVertBlurMask);
+
+    blurProg.setUniform('u_vert', true);
+    blurProg.setUniform('u_image', texHorzBlurMask);
+    blurProg.run(fbVertBlurMask);
+
+    kernel = blurKernel(
+        userOptions.noiseBlur, gl.canvas.width, gl.canvas.height
+    );
+    blurProg.setUniform('u_kernel', kernel);
+
+    const texHorzBlurNoise = new Texture(gl, 5);
+    texHorzBlurNoise.setData(gl.canvas.width, gl.canvas.height);
+    const fbHorzBlurNoise = new Framebuffer(gl, texHorzBlurNoise);
+    blurProg.setUniform('u_vert', false);
+    blurProg.setUniform('u_image', texNoise);
+    blurProg.run(fbHorzBlurNoise);
+
+    const texVertBlurNoise = new Texture(gl, 6);
+    texVertBlurNoise.setData(gl.canvas.width, gl.canvas.height);
+    const fbVertBlurNoise = new Framebuffer(gl, texVertBlurNoise);
+    blurProg.setUniform('u_vert', true);
+    blurProg.setUniform('u_image', texHorzBlurNoise);
+    blurProg.run(fbVertBlurNoise);
+
+    mainProg.setUniform('u_mask', texVertBlurMask);
+    mainProg.setUniform('u_noise', texVertBlurNoise);
+    mainProg.setUniform('u_userOptions.mode', '#10');
+    mainProg.run();
+
+    // delete textures
+    /*
+    texNoise.dispose();
+    texHorzBlurNoise.dispose();
+    texVertBlurNoise.dispose();
+    texHorzBlurMask.dispose();
+    texVertBlurMask.dispose();
+    texMask.dispose();
+     */
+
+    gl.finish();
+}
+
+function makeThrottle(opts: any = {}) {
+    console.error(`NEW THROTTLE!`);
+    const { deltaMs = 1000 } = opts;
+    let lastTs = undefined;
+    let handle = undefined;
+    return (f) => {
+        const now = Date.now();
+        if (handle) {
+            //console.log(`clearing handle ${handle}`);
+            clearTimeout(handle);
+            handle = undefined;
+        }
+        if (!lastTs || now - lastTs > deltaMs) {
+            /*
+            if (lastTs) {
+                console.log(`thottling1 after ${now-lastTs} ms`);
+            }
+             */
+            f();
+            lastTs = now;
+        } else {
+            handle = setTimeout(() => {
+                /*
+                if (lastTs) {
+                    console.log(`thottling2 after ${Date.now()-lastTs} ms, handle: ${handle}`);
+                }
+                 */
+                f();
+                handle = undefined;
+                lastTs = Date.now();
+            }, deltaMs - (now - lastTs));
+        }
+    };
+}
+
+const throttle = makeThrottle({ deltaMs: 200 });
+
+export function Photo(props: PhotoProps): React.ReactElement {
+    const { path, options } = props;
+    const borderWidth = 20;
     const outerRef = useRef(null);
     const innerRef = useRef(null);
+    const darkroomRef = useRef({} as Darkroom);
+    //const throttleRef = useRef(makeThrottle({ deltaMs: 1000 }));
 
     const init = useMemo(() => (gl: WebGL2RenderingContext) => {
-        console.log('Running init');
-        const darkroom: Darkroom = darkroomRef.current;
-        initExtensions(gl);
-        const position = [[-1, -1], [-1,  1], [ 1,  1], [-1, -1], [ 1, -1], [ 1,  1]];
-        const texCoord = [[0, 1], [0, 0], [1, 0], [0, 1], [1, 1], [1, 0]];
+        if (!path) {
+            return;
+        }
+        const darkroom = darkroomRef.current;
+        initPhoto(gl, path, darkroom);
+    }, [ path ]);
 
-        darkroom.mainProg = new Program(gl, vertexShaderSource, fragmentShaderSource);
-        darkroom.mainProg.setAttribute('a_position', position);
-        darkroom.mainProg.setAttribute('a_texCoord', texCoord);
-        darkroom.mainProg.setUniform('u_spectrumData', spectrumData);
-        darkroom.mainProg.setUniform('u_profileData', profileData);
-        //mainProg.setUniform('u_userOptions', userOpts);
-
-        darkroom.image = new Texture(gl, 0);
-        darkroom.image.setData(img.width, img.height, new Float32Array(img.image.buffer), {
-            minFilter: gl.LINEAR,
-            magFilter: gl.LINEAR,
-            alpha: false,
+    const draw = (gl: WebGL2RenderingContext) => {
+        //const throttle = throttleRef.current;
+        const darkroom = darkroomRef.current;
+        throttle(() => {
+            if (!path) {
+                return;
+            }
+            drawPhoto(gl, darkroom, options);
         });
-        darkroom.mainProg.setUniform('u_image', darkroom.image);
-
-        darkroom.blurProg = new Program(gl, blurVertexShader, blurFragmentShader);
-        darkroom.blurProg.setAttribute('a_position', position);
-        darkroom.blurProg.setAttribute('a_texCoord', texCoord);
-
-        darkroom.noiseProg = new Program(gl, noiseVertexShader, noiseFragmentShader);
-        darkroom.noiseProg.setAttribute('a_position', position);
-        darkroom.noiseProg.setAttribute('a_texCoord', texCoord);
-    }, [img]);
-
-    const draw = useMemo(() => (gl: WebGL2RenderingContext) => {
-        console.log('Running draw');
-        const darkroom: Darkroom = darkroomRef.current;
-        const { mainProg, noiseProg, blurProg } = darkroom;
-        mainProg.setUniform('u_userOptions', {
-            color_corr: userOptions.colorCorr,
-            film_exposure: userOptions.filmExposure,
-            paper_exposure: userOptions.paperExposure,
-            paper_contrast: userOptions.paperContrast,
-            curve_smoo: userOptions.curveSmoo,
-        });
-        mainProg.setUniform('u_maskThreshold', userOptions.maskThreshold);
-        mainProg.setUniform('u_maskDensity', userOptions.maskDensity);
-        //noiseProg.setUniform('u_seed', '#0');
-        noiseProg.setUniform('u_sigma', userOptions.noiseSigma);
-
-        const texNoise = new Texture(gl, 1);
-        texNoise.setData(gl.canvas.width, gl.canvas.height);
-        const fbNoise = new Framebuffer(gl, texNoise);
-
-        noiseProg.run(fbNoise);
-
-        const texMask = new Texture(gl, 2);
-        texMask.setData(gl.canvas.width, gl.canvas.height);
-        const fbMask = new Framebuffer(gl, texMask);
-
-        mainProg.setUniform('u_userOptions.mode', '#9');
-        mainProg.run(fbMask);
-
-        const texHorzBlurMask = new Texture(gl, 3);
-        texHorzBlurMask.setData(gl.canvas.width, gl.canvas.height);
-        const fbHorzBlurMask = new Framebuffer(gl, texHorzBlurMask);
-        
-        let kernel = blurKernel(
-            userOptions.maskBlur, gl.canvas.width, gl.canvas.height
-        );
-        blurProg.setUniform('u_kernel', kernel);
-
-        blurProg.setUniform('u_vert', false);
-        blurProg.setUniform('u_image', texMask);
-        blurProg.run(fbHorzBlurMask);
-
-        const texVertBlurMask = new Texture(gl, 4);
-        texVertBlurMask.setData(gl.canvas.width, gl.canvas.height);
-        const fbVertBlurMask = new Framebuffer(gl, texVertBlurMask);
-
-        blurProg.setUniform('u_vert', true);
-        blurProg.setUniform('u_image', texHorzBlurMask);
-        blurProg.run(fbVertBlurMask);
-
-        kernel = blurKernel(
-            userOptions.noiseBlur, gl.canvas.width, gl.canvas.height
-        );
-        blurProg.setUniform('u_kernel', kernel);
-
-        const texHorzBlurNoise = new Texture(gl, 5);
-        texHorzBlurNoise.setData(gl.canvas.width, gl.canvas.height);
-        const fbHorzBlurNoise = new Framebuffer(gl, texHorzBlurNoise);
-        blurProg.setUniform('u_vert', false);
-        blurProg.setUniform('u_image', texNoise);
-        blurProg.run(fbHorzBlurNoise);
-
-        const texVertBlurNoise = new Texture(gl, 6);
-        texVertBlurNoise.setData(gl.canvas.width, gl.canvas.height);
-        const fbVertBlurNoise = new Framebuffer(gl, texVertBlurNoise);
-        blurProg.setUniform('u_vert', true);
-        blurProg.setUniform('u_image', texHorzBlurNoise);
-        blurProg.run(fbVertBlurNoise);
-
-        mainProg.setUniform('u_mask', texVertBlurMask);
-        mainProg.setUniform('u_noise', texVertBlurNoise);
-        mainProg.setUniform('u_userOptions.mode', '#10');
-        mainProg.run();
-        gl.flush();
-    }, [img, userOptions]);
-
-    const borderWidth = 20;
-    // border: `${borderWidth}px solid green`
-
+    };
+    
     useEffect(() => {
+        if (!path) {
+            return;
+        }
+        const darkroom = darkroomRef.current;
         const outer = outerRef.current;
         const inner = innerRef.current;
         let oldWidth: number;
         let oldHeight: number;
         const resizeObserver = new ResizeObserver(() => {
             if (oldWidth !== outer.clientWidth || oldHeight !== outer.clientHeight) {
-                const ratio = img.width / img.height;
+                const ratio = darkroom.image.width / darkroom.image.height;
                 const rect = inscribedRect(outer.clientWidth - 2*borderWidth, outer.clientHeight - 2*borderWidth, ratio);
                 inner.style.width = rect.width + `px`;
                 inner.style.height = rect.height + `px`;
@@ -232,7 +288,8 @@ export function FilmProcessor(props: PhotoProcessorProps): React.ReactElement {
         return () => {
             resizeObserver.disconnect();
         };
-    }, [img]);
+    }, [path]);
+
     return (
         <div ref={outerRef} style={{
             width: '100%',
