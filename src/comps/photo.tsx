@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useRef, useEffect, useState, useMemo } from 'react';
 //import { useSelector } from 'react-redux';
-import { Program, Texture, Framebuffer, initExtensions } from '../glw';
+import { Program, Texture, Framebuffer, initExtensions, integer, Integer } from '../glw';
 import { loadRaw } from '../libraw';
 import { State, UserOptions } from '../store';
 import { inscribedRect } from '../math';
@@ -23,11 +23,11 @@ const profileData = JSON.parse(fs.readFileSync('./data/new-profile.json', { enco
 //const profileData = JSON.parse(fs.readFileSync('./data/b29-50d.json', { encoding: 'utf8' }));
 //const profileData = JSON.parse(fs.readFileSync('./data/prof1.json', { encoding: 'utf8' }));
 
-function blurKernel(rr: number, w: number, h: number): { data: number[], size: string } {
+function blurKernel(rr: number, w: number, h: number): { data: number[], size: Integer } {
     if (rr === 0) {
         return {
             data: [1],
-            size: '#1',
+            size: integer(1), //'#1',
         };
     }
     const s = rr * Math.min(w, h) / 100;
@@ -41,7 +41,7 @@ function blurKernel(rr: number, w: number, h: number): { data: number[], size: s
     }
     return {
         data: d,
-        size: '#' + (2*r+1),
+        size: integer(2*r+1), //'#' + (2*r+1),
     };
 }
 
@@ -121,60 +121,58 @@ function drawPhoto(gl: WebGL2RenderingContext, darkroom: Darkroom, userOptions: 
     });
     mainProg.setUniform('u_maskThreshold', userOptions.maskThreshold);
     mainProg.setUniform('u_maskDensity', userOptions.maskDensity);
-    mainProg.setUniform('u_mask', 0);
-    mainProg.setUniform('u_noise', 0);
+    mainProg.setUniform('u_mask', integer(0));
+    mainProg.setUniform('u_noise', integer(0));
+    
     //noiseProg.setUniform('u_seed', '#0');
     noiseProg.setUniform('u_sigma', userOptions.noiseSigma);
 
+    // Create necessary buffers
     const fbNoise = new Framebuffer(gl, 1, width, height);
+    const fbMask = new Framebuffer(gl, 2, width, height);
+    const fbTmp = new Framebuffer(gl, 3, width, height);
 
+    // Produce noise
     noiseProg.run(fbNoise);
 
-    const fbMask = new Framebuffer(gl, 2, width, height);
+    let kernel = blurKernel(
+        userOptions.noiseBlur, gl.canvas.width, gl.canvas.height
+    );
+    blurProg.setUniform('u_kernel', kernel);
+    blurProg.setUniform('u_vert', false);
+    blurProg.setUniform('u_image', fbNoise.texture);
+    blurProg.run(fbTmp);
 
-    mainProg.setUniform('u_userOptions.mode', '#9');
+    blurProg.setUniform('u_vert', true);
+    blurProg.setUniform('u_image', fbTmp.texture);
+    blurProg.run(fbNoise);
+
+    // Produce mask
+    mainProg.setUniform('u_userOptions.mode', integer(9));
     mainProg.run(fbMask);
 
-    const fbHorzBlurMask = new Framebuffer(gl, 3, width, height);
-    
-    let kernel = blurKernel(
+    kernel = blurKernel(
         userOptions.maskBlur, gl.canvas.width, gl.canvas.height
     );
     blurProg.setUniform('u_kernel', kernel);
 
     blurProg.setUniform('u_vert', false);
     blurProg.setUniform('u_image', fbMask.texture);
-    blurProg.run(fbHorzBlurMask);
-
-    const fbVertBlurMask = new Framebuffer(gl, 4, width, height);
+    blurProg.run(fbTmp);
 
     blurProg.setUniform('u_vert', true);
-    blurProg.setUniform('u_image', fbHorzBlurMask.texture);
-    blurProg.run(fbVertBlurMask);
+    blurProg.setUniform('u_image', fbTmp.texture);
+    blurProg.run(fbMask);
 
-    kernel = blurKernel(
-        userOptions.noiseBlur, gl.canvas.width, gl.canvas.height
-    );
-    blurProg.setUniform('u_kernel', kernel);
-
-    const fbHorzBlurNoise = new Framebuffer(gl, 5, width, height);
-
-    blurProg.setUniform('u_vert', false);
-    blurProg.setUniform('u_image', fbNoise.texture);
-    blurProg.run(fbHorzBlurNoise);
-
-    const fbVertBlurNoise = new Framebuffer(gl, 6, width, height);
-
-    blurProg.setUniform('u_vert', true);
-    blurProg.setUniform('u_image', fbHorzBlurNoise.texture);
-    blurProg.run(fbVertBlurNoise);
-
-    mainProg.setUniform('u_mask', fbVertBlurMask.texture);
-    mainProg.setUniform('u_noise', fbVertBlurNoise.texture);
-    mainProg.setUniform('u_userOptions.mode', '#10');
+    mainProg.setUniform('u_mask', fbMask.texture);
+    mainProg.setUniform('u_noise', fbNoise.texture);
+    mainProg.setUniform('u_userOptions.mode', integer(10));
     mainProg.run();
 
-    //gl.finish();
+    fbTmp.dispose();
+    fbNoise.dispose();
+    fbMask.dispose();
+    gl.finish();
 }
 
 function makeThrottle(opts: any = {}) {

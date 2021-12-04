@@ -4,12 +4,30 @@ export function initExtensions(gl: WebGL2RenderingContext): void {
     console.log(gl.getExtension('EXT_float_blend'));
 }
 
+export class Integer {
+    readonly value: number;
+
+    constructor(v: number) {
+        this.value = v;
+    }
+}
+
+export function integer(n: number): Integer {
+    return new Integer(n);
+}
+
 export function initUniform(gl: WebGL2RenderingContext, program: WebGLProgram, struct: any, path: string): void {
     if (Array.isArray(struct)) {
         const innerArray = path[path.length-1] === ']';
         for (let i = 0; i < struct.length; i++) {
             initUniform(gl, program, struct[i], `${path}${innerArray ? '.a' : ''}[${i}]`);
         }
+    } else if (typeof struct === 'object' && struct instanceof Integer) {
+        const loc = gl.getUniformLocation(program, path);
+        if (!loc) {
+            console.error(`Can't locate uniform at ${path}`);
+        }
+        gl.uniform1i(loc, struct.value);
     } else if (typeof struct === 'object' && struct !== null) {
         for (let key of Object.keys(struct)) {
             initUniform(gl, program, struct[key], `${path}.${key}`);
@@ -20,12 +38,6 @@ export function initUniform(gl: WebGL2RenderingContext, program: WebGLProgram, s
             console.error(`Can't locate uniform at ${path}`);
         }
         gl.uniform1i(loc, struct ? 1 : 0);
-    } else if (typeof struct === 'string' && struct[0] === '#') {
-        const loc = gl.getUniformLocation(program, path);
-        if (!loc) {
-            console.error(`Can't locate uniform at ${path}`);
-        }
-        gl.uniform1i(loc, parseInt(struct.slice(1)));
     } else if (typeof struct === 'number') {
         const loc = gl.getUniformLocation(program, path);
         if (!loc) {
@@ -106,6 +118,7 @@ export class Program {
     }
 
     setUniform(name: string, value: any): void { // and also Texture if `value instanceof Texture`
+        //console.log(`setUniform(${name}, ${value})`);
         const gl = this.gl;
         gl.useProgram(this.program);
         if (value instanceof Texture) {
