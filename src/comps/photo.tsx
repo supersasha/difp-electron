@@ -68,16 +68,8 @@ interface Darkroom {
     blurProg?: Program;
     noiseProg?: Program;
     image?: Texture;
-    //run?: any;
-    //gl?: any;
 }
 
-/*
-export interface RawPhotoProps {
-    path?: string;
-    processor: (props: PhotoProcessorProps) => React.ReactElement;
-}
- */
 export interface PhotoProps {
     path: string;
     options: UserOptions;
@@ -115,6 +107,9 @@ function initPhoto(gl: WebGL2RenderingContext, imgPath: string, darkroom: Darkro
 }
 
 function drawPhoto(gl: WebGL2RenderingContext, darkroom: Darkroom, userOptions: UserOptions): void {
+    const width = gl.canvas.width;
+    const height = gl.canvas.height;
+
     const { mainProg, noiseProg, blurProg } = darkroom;
     console.log('Running draw', mainProg.gl === gl);
     mainProg.setUniform('u_userOptions', {
@@ -126,25 +121,21 @@ function drawPhoto(gl: WebGL2RenderingContext, darkroom: Darkroom, userOptions: 
     });
     mainProg.setUniform('u_maskThreshold', userOptions.maskThreshold);
     mainProg.setUniform('u_maskDensity', userOptions.maskDensity);
+    mainProg.setUniform('u_mask', 0);
+    mainProg.setUniform('u_noise', 0);
     //noiseProg.setUniform('u_seed', '#0');
     noiseProg.setUniform('u_sigma', userOptions.noiseSigma);
 
-    const texNoise = new Texture(gl, 1);
-    texNoise.setData(gl.canvas.width, gl.canvas.height);
-    const fbNoise = new Framebuffer(gl, texNoise);
+    const fbNoise = new Framebuffer(gl, 1, width, height);
 
     noiseProg.run(fbNoise);
 
-    const texMask = new Texture(gl, 2);
-    texMask.setData(gl.canvas.width, gl.canvas.height);
-    const fbMask = new Framebuffer(gl, texMask);
+    const fbMask = new Framebuffer(gl, 2, width, height);
 
     mainProg.setUniform('u_userOptions.mode', '#9');
     mainProg.run(fbMask);
 
-    const texHorzBlurMask = new Texture(gl, 3);
-    texHorzBlurMask.setData(gl.canvas.width, gl.canvas.height);
-    const fbHorzBlurMask = new Framebuffer(gl, texHorzBlurMask);
+    const fbHorzBlurMask = new Framebuffer(gl, 3, width, height);
     
     let kernel = blurKernel(
         userOptions.maskBlur, gl.canvas.width, gl.canvas.height
@@ -152,15 +143,13 @@ function drawPhoto(gl: WebGL2RenderingContext, darkroom: Darkroom, userOptions: 
     blurProg.setUniform('u_kernel', kernel);
 
     blurProg.setUniform('u_vert', false);
-    blurProg.setUniform('u_image', texMask);
+    blurProg.setUniform('u_image', fbMask.texture);
     blurProg.run(fbHorzBlurMask);
 
-    const texVertBlurMask = new Texture(gl, 4);
-    texVertBlurMask.setData(gl.canvas.width, gl.canvas.height);
-    const fbVertBlurMask = new Framebuffer(gl, texVertBlurMask);
+    const fbVertBlurMask = new Framebuffer(gl, 4, width, height);
 
     blurProg.setUniform('u_vert', true);
-    blurProg.setUniform('u_image', texHorzBlurMask);
+    blurProg.setUniform('u_image', fbHorzBlurMask.texture);
     blurProg.run(fbVertBlurMask);
 
     kernel = blurKernel(
@@ -168,36 +157,24 @@ function drawPhoto(gl: WebGL2RenderingContext, darkroom: Darkroom, userOptions: 
     );
     blurProg.setUniform('u_kernel', kernel);
 
-    const texHorzBlurNoise = new Texture(gl, 5);
-    texHorzBlurNoise.setData(gl.canvas.width, gl.canvas.height);
-    const fbHorzBlurNoise = new Framebuffer(gl, texHorzBlurNoise);
+    const fbHorzBlurNoise = new Framebuffer(gl, 5, width, height);
+
     blurProg.setUniform('u_vert', false);
-    blurProg.setUniform('u_image', texNoise);
+    blurProg.setUniform('u_image', fbNoise.texture);
     blurProg.run(fbHorzBlurNoise);
 
-    const texVertBlurNoise = new Texture(gl, 6);
-    texVertBlurNoise.setData(gl.canvas.width, gl.canvas.height);
-    const fbVertBlurNoise = new Framebuffer(gl, texVertBlurNoise);
+    const fbVertBlurNoise = new Framebuffer(gl, 6, width, height);
+
     blurProg.setUniform('u_vert', true);
-    blurProg.setUniform('u_image', texHorzBlurNoise);
+    blurProg.setUniform('u_image', fbHorzBlurNoise.texture);
     blurProg.run(fbVertBlurNoise);
 
-    mainProg.setUniform('u_mask', texVertBlurMask);
-    mainProg.setUniform('u_noise', texVertBlurNoise);
+    mainProg.setUniform('u_mask', fbVertBlurMask.texture);
+    mainProg.setUniform('u_noise', fbVertBlurNoise.texture);
     mainProg.setUniform('u_userOptions.mode', '#10');
     mainProg.run();
 
-    // delete textures
-    /*
-    texNoise.dispose();
-    texHorzBlurNoise.dispose();
-    texVertBlurNoise.dispose();
-    texHorzBlurMask.dispose();
-    texVertBlurMask.dispose();
-    texMask.dispose();
-     */
-
-    gl.finish();
+    //gl.finish();
 }
 
 function makeThrottle(opts: any = {}) {
@@ -235,7 +212,7 @@ function makeThrottle(opts: any = {}) {
     };
 }
 
-const throttle = makeThrottle({ deltaMs: 200 });
+const throttle = makeThrottle({ deltaMs: 100 });
 
 export function Photo(props: PhotoProps): React.ReactElement {
     const { path, options } = props;

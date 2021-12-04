@@ -139,6 +139,9 @@ export class Program {
         const drawOffset = 0;
         const count = 6;
         gl.drawArrays(primitiveType, drawOffset, count);
+
+        // REMOVE next line?
+        gl.finish();
     }
 }
 
@@ -212,22 +215,25 @@ export class Texture {
 }
 
 export class Framebuffer {
-    gl: WebGL2RenderingContext;
-    texture: Texture;
-    framebuffer: WebGLFramebuffer;
+    readonly texture: Texture;
+    readonly framebuffer: WebGLFramebuffer;
 
-    constructor(gl: WebGL2RenderingContext, tex: Texture) {
+    private gl: WebGL2RenderingContext;
+
+    constructor(gl: WebGL2RenderingContext, unit: number, width: number, height: number) {
         this.gl = gl;
-        this.texture = tex;
+        this.texture = new Texture(gl, unit);
+        this.texture.setData(width, height);
         this.framebuffer = gl.createFramebuffer();
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
         const attachmentPoint = gl.COLOR_ATTACHMENT0;
         gl.framebufferTexture2D(
-            gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, tex.texture, 0);
+            gl.FRAMEBUFFER, attachmentPoint, gl.TEXTURE_2D, this.texture.texture, 0);
     }
 
     dispose() {
         this.gl.deleteFramebuffer(this.framebuffer);
+        this.texture.dispose();
     }
 }
 
