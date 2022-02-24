@@ -6,10 +6,13 @@ import { linspace } from '../generators';
 
 const xs = Matrix.fromArray([[...linspace(-10, 10, 10000)]]);
 
+type PlotKind = 'line' | 'scatter';
+
 export interface PlotSpec {
     xs: number[];
     ys: number[];
     style: string;
+    kind: PlotKind;
 }
 
 export interface PlotProps {
@@ -26,28 +29,19 @@ export interface PlotProps {
     lineWidth: number;
 }
 
+const defaultPlotSpec: PlotSpec = {
+    xs: [],
+    ys: [],
+    style: '',
+    kind: 'line',
+};
+
 const defaultProps: PlotProps = {
     containerStyle: {},
     plotMargin: 60,
     xrange: 'auto', // 'auto' | [x0, x1]
     yrange: 'auto', // 'auto' | [y0, y1]
-    plots: [
-        {
-            xs: xs.toFlatArray(),
-            ys: xs.map(x => Math.sin(x)).toFlatArray(),
-            style: 'blue',
-        },
-        {
-            xs: xs.toFlatArray(),
-            ys: xs.map(x => Math.exp(Math.sin(2*x))).toFlatArray(),
-            style: 'green',
-        },
-        {
-            xs: xs.toFlatArray(),
-            ys: xs.map(x => Math.exp(x === 0 ? 0 : Math.sin(1/x))).toFlatArray(),
-            style: 'red',
-        },
-    ],
+    plots: [],
     xmarks: 11,
     xmarkFormat: 'fixed:2',
     ymarks: 11,
@@ -56,8 +50,12 @@ const defaultProps: PlotProps = {
     lineWidth: 1,
 };
 
-export function Plot(_props: Partial<PlotProps>): React.ReactElement {
-    const props = { ...defaultProps, ..._props };
+export function Plot(_props: Partial<Omit<PlotProps, 'plots'> & { plots: Partial<PlotSpec>[] }>): React.ReactElement {
+    const props: PlotProps = { ...defaultProps, ..._props,
+                    plots: _props.plots?.map(
+                        (p: Partial<PlotSpec>): PlotSpec => ({ ...defaultPlotSpec, ...p })
+                    )
+    };
     const containerRef = useRef(null);
     const canvasRef = useRef(null);
 
@@ -161,17 +159,34 @@ export function Plot(_props: Partial<PlotProps>): React.ReactElement {
             ctx.save();
             ctx.save();
             ctx.translate(marg, marg);
-            ctx.scale((width - 2*marg)/ (xrange[1] - xrange[0]), (height - 2*marg)/ (yrange[0] - yrange[1]));
+            const scaleX = (width - 2*marg)  / (xrange[1] - xrange[0]);
+            const scaleY = (height - 2*marg) / (yrange[0] - yrange[1]);
+            ctx.scale(scaleX, scaleY);
             ctx.translate(-xrange[0], -yrange[1]);
-            ctx.beginPath();
-            ctx.moveTo(p.xs[0], p.ys[0]);
-            for (let i = 1; i < p.xs.length; i++) {
-                ctx.lineTo(p.xs[i], p.ys[i]);
+            if (p.kind === 'line') {
+                ctx.beginPath();
+                ctx.moveTo(p.xs[0], p.ys[0]);
+                for (let i = 1; i < p.xs.length; i++) {
+                    ctx.lineTo(p.xs[i], p.ys[i]);
+                }
+                ctx.restore();
+                ctx.lineWidth = props.lineWidth;
+                ctx.strokeStyle = p.style;
+                ctx.stroke();
+            } else if (p.kind === 'scatter') {
+                for (let i = 0; i < p.xs.length; i++) {
+                    ctx.beginPath();
+                    ctx.ellipse(p.xs[i], p.ys[i],
+                        Math.abs(props.lineWidth / scaleX),
+                        Math.abs(props.lineWidth / scaleY),
+                        0, 0, 2*Math.PI
+                    );
+                    ctx.closePath();
+                    ctx.fillStyle = p.style;
+                    ctx.fill();
+                }
+                ctx.restore();
             }
-            ctx.restore();
-            ctx.lineWidth = props.lineWidth;
-            ctx.strokeStyle = p.style;
-            ctx.stroke();
             ctx.restore();
         }
         ctx.restore();
@@ -226,7 +241,7 @@ export function Spectrum31Plot(props: Partial<Spectrum31PlotProps>): React.React
                 {
                     xs,
                     ys: d.ys,
-                    style: d.style
+                    style: d.style,
                 }
             ))}
             xmarks={31}

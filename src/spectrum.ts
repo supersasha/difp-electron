@@ -1,9 +1,14 @@
 import { Matrix } from './matrix';
-import { log10 } from './math';
+import { log10, mul } from './math';
 import { chromaticity } from './colors';
 import * as nlopt from 'nlopt-js';
 
-import { SpectrumData } from './data';
+import { SpectrumData, saveSpectrumData } from './data';
+import { nmf } from './nmf';
+
+/*
+
+Warning: incorrect, don't use!
 
 export const A_1931_64_400_700_10nm = Matrix.fromArray([
     [ 0.0191097, 0.0020044, 0.0860109 ],
@@ -38,6 +43,47 @@ export const A_1931_64_400_700_10nm = Matrix.fromArray([
     [ 0.0199413, 0.0077488, 0 ],
     [ 0.00957688, 0.00371774, 0 ],
 ]).transpose();
+*/
+
+function colorMatchingG(x: number, mu: number, sigma1: number, sigma2: number): number {
+    const dx = x - mu;
+    if (x < mu) {
+        return Math.exp(-0.5*dx*dx/(sigma1*sigma1));
+    } else {
+        return Math.exp(-0.5*dx*dx/(sigma2*sigma2));
+    }
+}
+
+function colorMatchingX(lambda: number): number {
+    return 1.056 * colorMatchingG(lambda, 599.8, 37.9, 31.0) +
+           0.362 * colorMatchingG(lambda, 442.0, 16.0, 26.7) +
+          -0.065 * colorMatchingG(lambda, 501.1, 20.4, 26.2);
+}
+
+function colorMatchingY(lambda: number): number {
+    return 0.821 * colorMatchingG(lambda, 568.8, 46.9, 40.5) +
+           0.286 * colorMatchingG(lambda, 530.9, 16.3, 31.1);
+}
+
+function colorMatchingZ(lambda: number): number {
+    return 1.217 * colorMatchingG(lambda, 437.0, 11.8, 36.0) +
+           0.681 * colorMatchingG(lambda, 459.0, 26.0, 13.8);
+}
+
+export function colorMatchingMatrix(): Matrix {
+    return Matrix.withGen([3, 31], (r, c) => {
+        if (r === 0) {
+            return colorMatchingX(400 + c * 10);
+        } else if (r === 1) {
+            return colorMatchingY(400 + c * 10);
+        } else {
+            return colorMatchingZ(400 + c * 10);
+        }
+    });
+}
+
+export const COLOR_MATCHING_MTX = colorMatchingMatrix();
+export const A_1931_64_400_700_10nm = COLOR_MATCHING_MTX; // obsolete, don't use
 
 const D_S0 = Matrix.fromArray([[
      94.80, 104.80, 105.90,  96.80, 113.90, 125.60, 125.50, 121.30, 121.30, 113.50,
@@ -58,6 +104,41 @@ const D_S2 = Matrix.fromArray([[
     -1.50, -1.30, -1.20, -1.00, -0.50, -0.30,  0.00,  0.20,  0.50,  2.10,
      3.20,  4.10,  4.70,  5.10,  6.70,  7.30,  8.60,  9.80, 10.20,  8.30,
      9.60
+]]);
+
+
+export const D65 = Matrix.fromArray([[
+    82.754900,
+    91.486000,
+    93.431800,
+    86.682300,
+    104.865000,
+    117.008000,
+    117.812000,
+    114.861000,
+    115.923000,
+    108.811000,
+    109.354000,
+    107.802000,
+    104.790000,
+    107.689000,
+    104.405000,
+    104.046000,
+    100.000000,
+    96.334200,
+    95.788000,
+    88.685600,
+    90.006200,
+    89.599100,
+    87.698700,
+    83.288600,
+    83.699200,
+    80.026800,
+    80.214600,
+    82.277800,
+    78.284200,
+    69.721300,
+    71.609100,
 ]]);
 
 export function daylightSpectrum(temp: number): Matrix {
@@ -101,6 +182,11 @@ export function normalizedSense(logsense: Matrix, light: Matrix): Matrix {
 export function transmittanceToXyzMtx(light: Matrix): Matrix {
     const N = A_1931_64_400_700_10nm.row(1).dot(light);
     return A_1931_64_400_700_10nm.colWise((a, l) => a * l, light.map(l => 100 / N * l));
+}
+
+export function reflectanceUnderLightSource(refl: Matrix, light: Matrix): Matrix {
+    const mtx = transmittanceToXyzMtx(light);
+    return refl.mmul(mtx.transpose());
 }
 
 export function whitePoint(ill: Matrix): Matrix {
@@ -179,6 +265,45 @@ export class ReflGen {
 
     reflOf(xyz: Matrix): Matrix {
         const v = this.triToVMtx.mmul(xyz.transpose());
-        return this.base.mmul(v).transpose().clip(1e-15, 1);
+        return this.base.mmul(v).transpose().clip(1.0e-15, 1);
     }
+    
+    reflOfUnclipped(xyz: Matrix): Matrix {
+        const v = this.triToVMtx.mmul(xyz.transpose());
+        return this.base.mmul(v).transpose();
+    }
+
+    getBase(): Matrix {
+        return this.base;
+    }
+
+    getLight(): Matrix {
+        return this.light;
+    }
+
+    save(filename: string): void {
+        const spectrumData: SpectrumData = {
+            wp: [],
+            light: this.light.toFlatArray(),
+            base: this.base.transpose().toArray(),
+            tri_to_v_mtx: this.triToVMtx.toArray()
+        };
+        saveSpectrumData(filename, spectrumData);
+    }
+}
+
+export function generateSpectrumData(refls: Matrix[], light: Matrix): SpectrumData {
+    const rsMtx = Matrix.fromRows(refls); // rsMtx(n x 31) = w(n x 3) * h(3 x 31)
+    const { h } = nmf(rsMtx, 3);
+    const k = 100.0;
+    const n = light.dot(COLOR_MATCHING_MTX.row(1));
+    const a = COLOR_MATCHING_MTX.colWise(mul, light).mul(k / n); // 3x31
+    const base = h.transpose(); // 31 x 3
+    const triToVMtx = a.mmul(base).inv3x3();
+    return {
+        wp: [], // should be white point xy, but unused
+        light: light.toFlatArray(),
+        base: base.transpose().toArray(),
+        tri_to_v_mtx: triToVMtx.toArray(),
+    };
 }

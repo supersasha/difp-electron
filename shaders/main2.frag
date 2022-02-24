@@ -136,6 +136,41 @@ vec4 xyz_to_srgb_scalar(vec4 c)
     return vec4(r, g, b, 1.0);
 }
 
+vec4 srgb_to_xyz_scalar(vec4 c)
+{
+    float r = c.x;
+    float g = c.y;
+    float b = c.z;
+
+    if(r > 0.04045) {
+        r = pow((r + 0.055) / 1.055, 2.4);
+    } else {
+        r /= 12.92;
+    }
+
+    if(g > 0.04045) {
+        g = pow((g + 0.055) / 1.055, 2.4);
+    } else {
+        g /= 12.92;
+    }
+
+    if(b > 0.04045) {
+        b = pow((b + 0.055) / 1.055, 2.4);
+    } else {
+        b /= 12.92;
+    }
+
+    r *= 100.0;
+    g *= 100.0;
+    b *= 100.0;
+
+    float x = r * 0.4124 + g * 0.3576 + b * 0.1805;
+    float y = r * 0.2126 + g * 0.7152 + b * 0.0722;
+    float z = r * 0.0193 + g * 0.1192 + b * 0.9505;
+
+    return vec4(x, y, z, 1.0);
+}
+
 float sigma(float x, float ymin, float ymax, float gamma, float bias, float smoo)
 {
     float a = (ymax - ymin) / 2.0;
@@ -186,7 +221,8 @@ float log10(float x) {
     return log(x) / log(10.0);
 }
 
-vec4 process_photo(vec4 xyz) {
+vec4 process_photo(vec4 srgb) {
+    vec4 xyz = srgb_to_xyz_scalar(srgb);
     if (u_userOptions.mode == IDENTITY) {
         return xyz_to_srgb_scalar(xyz * pow(10.0, u_userOptions.film_exposure));
     }
@@ -329,6 +365,6 @@ vec4 process_photo(vec4 xyz) {
 }
 
 void main() {
-    vec4 xyz = texture(u_image, v_texCoord);
-    outColor = process_photo(100.0 * xyz); 
+    vec4 srgb = texture(u_image, v_texCoord);
+    outColor = process_photo(srgb); //(100.0 * xyz);
 }

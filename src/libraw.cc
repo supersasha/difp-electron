@@ -18,6 +18,8 @@ Napi::Value loadRaw(const Napi::CallbackInfo& info)
 
     int outputColor = 5;
     bool halfSize = 0;
+    double gamma = 1;
+    double slope = 1;
     if (info.Length() == 2 && info[1].IsObject()) {
         auto options = info[1].As<Napi::Object>();
         if (options.Has("colorSpace")) {
@@ -26,6 +28,8 @@ Napi::Value loadRaw(const Napi::CallbackInfo& info)
                 outputColor = 0;
             } else if (colorSpace == "srgb") {
                 outputColor = 1;
+                gamma = 1.0 / 2.4;
+                slope = 12.92;
             } else if (colorSpace == "adobe") {
                 outputColor = 2;
             } else if (colorSpace == "wide") {
@@ -62,8 +66,8 @@ Napi::Value loadRaw(const Napi::CallbackInfo& info)
 
     //raw.imgdata.params.auto_bright_thr = 0.0001;
     
-    raw.imgdata.params.gamm[0] = 1.0; //1.0 / 2.4;
-    raw.imgdata.params.gamm[1] = 1.0; //12.92;
+    raw.imgdata.params.gamm[0] = gamma; //1.0 / 2.4;
+    raw.imgdata.params.gamm[1] = slope; //12.92;
 
     //raw.imgdata.params.aber[0] = 1.001;
     //raw.imgdata.params.aber[1] = 1.001;

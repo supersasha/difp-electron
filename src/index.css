@@ -9,3 +9,16 @@
     flex-grow: 1;
     flex-basis: 100px;
 }
+
+.td-slider-label {
+    padding-right: 10px;
+}
+
+.lab2cont {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.lab2item {
+    margin: 10px 20px;
+}

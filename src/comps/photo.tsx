@@ -77,7 +77,7 @@ export interface PhotoProps {
 
 function initPhoto(gl: WebGL2RenderingContext, imgPath: string, darkroom: Darkroom): void {
     console.log('Running init');
-    const img = loadRaw(imgPath, { colorSpace: "xyz", halfSize: false });
+    const img = loadRaw(imgPath, { colorSpace: "srgb", halfSize: false });
     initExtensions(gl);
     const position = [[-1, -1], [-1,  1], [ 1,  1], [-1, -1], [ 1, -1], [ 1,  1]];
     const texCoord = [[0, 1], [0, 0], [1, 0], [0, 1], [1, 1], [1, 0]];

@@ -17,6 +17,42 @@ export class Matrix {
         return new Matrix(new Float64Array(a.flat(2)), [a.length, a[0].length]);
     }
 
+    static withColumnGen(shape: MatrixShape, f: (i: number) => number[]): Matrix {
+        const m = Matrix.empty(shape);
+        for (let i = 0; i < shape[1]; i++) {
+            const col = f(i);
+            for (let j = 0; j < shape[0]; j++) {
+                m.set(j, i, col[j]);
+            }
+        }
+        return m;
+    }
+
+    static withRowsGen(shape: MatrixShape, f: (i: number) => number[]): Matrix {
+        const m = Matrix.empty(shape);
+        for (let i = 0; i < shape[0]; i++) {
+            const row = f(i);
+            for (let j = 0; j < shape[1]; j++) {
+                m.set(i, j, row[j]);
+            }
+        }
+        return m;
+    }
+
+    static withGen(shape: MatrixShape, f: (r: number, c: number) => number): Matrix {
+        const m = Matrix.empty(shape);
+        for (let r = 0; r < shape[0]; r++) {
+            for(let c = 0; c < shape[1]; c++) {
+                m.set(r, c, f(r, c));
+            }
+        }
+        return m;
+    }
+
+    static fromRows(a: Matrix[]): Matrix {
+        return Matrix.fromArray(a.map(m => m.toArray().flat()));
+    }
+
     static fromTypedArray(a: any, shape: MatrixShape): Matrix {
         return new Matrix(a, shape);
     }
@@ -240,5 +276,43 @@ export class Matrix {
             }
             return e;
         });
+    }
+
+    norm2(): number {
+        return Math.sqrt(this.reduce((acc: number, e: number) => acc + e * e, 0));
+    }
+    
+    norm1(): number {
+        return this.reduce((acc: number, e: number) => acc + Math.abs(e), 0);
+    }
+
+    inv3x3(): Matrix {
+        if (this.shape[0] !== 3 || this.shape[1] !== 3) {
+            throw new Error('Use inv3x3() method only on 3x3 matrices');
+        }
+        const [a, b, c, d, e, f, g, h, i] = this.toFlatArray();
+
+        const A = e*i - f*h;
+        const B = -(d*i - f*g);
+        const C = d*h - e*g;
+
+        const det = a*A + b*B + c*C;
+        if (Math.abs(det) < 1.0e-10) {
+            throw new Error('Can not invert the degenerate matrix');
+        }
+
+        const D = - (b*i - c*h);
+        const E = a*i - c*g;
+        const F = - (a*h - b*g);
+
+        const G = b*f - c*e;
+        const H = - (a*f - c*d);
+        const I = a*e - b*d;
+
+        return Matrix.fromArray([
+            [A, B, C],
+            [D, E, F],
+            [G, H, I]
+        ]).mul(1/det).transpose();
     }
 }

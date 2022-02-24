@@ -15,19 +15,20 @@ import {
 import { Matrix } from './matrix';
 import { mul, div, sub, Chi } from './math';
 
-let _LabInst: Lab;
+let labsMap: { [key: string]: Lab } = {};
+
 export class Lab {
-    static instance(): Lab {
-        if (!_LabInst) {
-            _LabInst = new Lab();
+    static instance(key: string): Lab {
+        if (!labsMap[key]) {
+            labsMap[key] = new Lab();
         }
-        return _LabInst;
+        return labsMap[key];
     }
 
     h0: number;
     inColors: Matrix[];
     outColors: Matrix[];
-    private paperGammas: Matrix;
+    paperGammas: Matrix;
     private filmDs: Datasheet;
     private paperDs: Datasheet;
     reflGen: ReflGen;
@@ -48,8 +49,15 @@ export class Lab {
     chiFilm: [Chi, Chi, Chi];
     private chiPaper: [Chi, Chi, Chi];
 
+    // debug
+    debugSpectrum: Matrix = Matrix.empty([0, 0]);
+    debugRefl: Matrix = Matrix.empty([0, 0]);
+    debugFilmDyes: Matrix = Matrix.empty([0, 0]);
+    debugFilmCouplers: Matrix = Matrix.empty([0, 0]);
+    debugPaperDyes: Matrix = Matrix.empty([0, 0]);
+
     constructor() {
-        this.h0 = -2 // -2 for minimal curvature of gamma curves
+        this.h0 = -2; // -2 for minimal curvature of gamma curves
         this.inColors = [];
         this.outColors = [];
         const pg = 5.5;
@@ -95,14 +103,14 @@ export class Lab {
         // filmGammas.get(sensor, layer)
         this.filmGammas = this.gammas/*.map(neg)*/.rowWise(div, this.paperGammas);
 
-        console.log('film gammas:', this.filmGammas.show(4));
+        //console.log('film gammas:', this.filmGammas.show(4));
 
         const qs = [];
         for (let layer = 0; layer < 3; layer++) {
             qs.push(this.findDyeQuantities(layer, this.h0));
         }
         this.qs = Matrix.fromArray(qs);
-        console.log('qs:', this.qs.show());
+        //console.log('qs:', this.qs.show());
         /*
         this.filmDyesQ = this.filmDyes.rowWise(mul, Matrix.fromArray([[
             this.qs.get(0, 0),
@@ -115,7 +123,7 @@ export class Lab {
             this.filmDyes.row(0).mul(this.qs.get(1, 0)).add(this.filmDyes.row(2).mul(this.qs.get(1, 2))).toFlatArray(),
             this.filmDyes.row(0).mul(this.qs.get(2, 0)).add(this.filmDyes.row(1).mul(this.qs.get(2, 1))).toFlatArray(),
         ]);
-        console.log('Couplers:', this.couplers);
+        //console.log('Couplers:', this.couplers);
         this.chiFilm = [
             new Chi(this.h0, 0, 0, this.qs.get(0, 0)),
             new Chi(this.h0, 0, 0, this.qs.get(1, 1)),
@@ -126,7 +134,7 @@ export class Lab {
             Chi.to(0, 4, this.paperGammas.getv(1), 0),
             Chi.to(0, 4, this.paperGammas.getv(2), 0),
         ];
-        console.log('Chi paper:', this.chiPaper);
+        //console.log('Chi paper:', this.chiPaper);
 
         const rgb0 = Matrix.fromArray([[0.1, 0.1, 0.1]]);
         const xyz0 = srgbToXyz(rgb0);
@@ -134,21 +142,24 @@ export class Lab {
                                     //Matrix.fromArray([[-0.23, -0.51, -0.35]]));
                                     //Matrix.fromArray([[-0.2, -0.7, -0.5]]));
         const rgb1 = xyzToSrgb(xyz1);
-        console.log(`From XYZ ${xyz0.show()} get ${xyz1.show()}`);
-        console.log(`From ${rgb0.show()} get ${rgb1.show()}`);
+        //console.log(`From XYZ ${xyz0.show()} get ${xyz1.show()}`);
+        //console.log(`From ${rgb0.show()} get ${rgb1.show()}`);
 
         //this.findCorrs();
     }
 
     develop(xyz: Matrix, corr: Matrix): Matrix {
         const sp = this.reflGen.spectrumOf(xyz);
-        console.log('sp:', sp.show());
+        this.debugSpectrum = sp;
+
+        // only for debugging purposes
+        const refl = this.reflGen.reflOfUnclipped(xyz);
+        this.debugRefl = refl;
+
         const H = logExposure(this.filmSense, sp);
-        console.log('H:', H.show());
         const negative = this.developFilm(H);
-        console.log('negative:', negative.show());
         const positive = this.developPaper(negative, corr);
-        console.log('positive:', positive.show());
+        this.debugPaperDyes = positive;
         return this.dyesToXyz(positive, Matrix.fill([1, 3], 1));
     }
 
@@ -164,30 +175,32 @@ export class Lab {
             this.chiFilm[2].get(H.getv(2)),
         ]]);
         const developedDyes = this.filmDyes.rowWise((e1, e2) => e1 * e2, dev);
+        this.debugFilmDyes = developedDyes;
         const cDev = Matrix.fromArray([[
             1 - dev.getv(0) / this.qs.get(0, 0),
             1 - dev.getv(1) / this.qs.get(1, 1),
             1 - dev.getv(2) / this.qs.get(2, 2),
         ]]);
         const developedCouplers = this.couplers.rowWise((e1, e2) => e1 * e2, cDev);
+        this.debugFilmCouplers = developedCouplers;
         return [developedDyes, developedCouplers];
     }
     
     developPaper(negative: Matrix, corr: Matrix): Matrix {
         const trans = transmittance(negative, Matrix.fill([1, 3], 1));
-        console.log('neg trans:', trans.show());
+        //console.log('neg trans:', trans.show());
         const sp = trans.elementWise((e1, e2) => e1 * e2, this.projLight);
-        console.log('neg sp:', sp.show());
+        //console.log('neg sp:', sp.show());
 
         // log10(10^paper_sense % sp)
         const H1 = logExposure(this.paperSense.rowWise(sub, corr), sp);
-        console.log('paper exposure:', H1.show());
+        //console.log('paper exposure:', H1.show());
         const dev = Matrix.fromArray([[
             this.chiPaper[0].get(H1.getv(0)),
             this.chiPaper[1].get(H1.getv(1)),
             this.chiPaper[2].get(H1.getv(2)),
         ]]);
-        console.log('paper dev:', dev.show(4));
+        //console.log('paper dev:', dev.show(4));
         return this.paperDyes.rowWise((e1, e2) => e1 * e2, dev);
     }
 
@@ -256,7 +269,7 @@ export class Lab {
         opt.setLowerBounds([...fill(9, -10)]);
         opt.setUpperBounds([...fill(9,  10)]);
         const res = opt.optimize([...fill(9, 0)]);
-        console.log('findGammas optimize result:', res);
+        //console.log('findGammas optimize result:', res);
         const x = res.x;
         const mtx = Matrix.fromArray([
             [x[0], x[1], x[2]],
@@ -264,10 +277,10 @@ export class Lab {
             [x[6], x[7], x[8]],
         ]);
         //const v = Matrix.fromArray([[x[9], x[10], x[11]]]);
-        console.log(mtx.show(4));
+        //console.log(mtx.show(4));
         for (let i = 0; i < cmyrgb.length; i++) {
             const [cmy, rgb] = cmyrgb[i];
-            console.log(cmy.show(), rgb.show(), '-->', rgb.mmul(mtx)/*.add(v)*/.show());
+            //console.log(cmy.show(), rgb.show(), '-->', rgb.mmul(mtx)/*.add(v)*/.show());
             this.inColors.push(this.dyesToXyz(this.paperDyes, cmy));
             this.outColors.push(this.dyesToXyz(this.paperDyes, rgb.mmul(mtx)/*.add(v)*/));
         }
@@ -312,13 +325,14 @@ export class Lab {
         opt.setLowerBounds([...fill(3, 0.001)]);
         opt.setUpperBounds([...fill(3, 4)]);
         const res = opt.optimize([...fill(3, 0.1)]);
-        console.log(`Dye quantities (${layer}):`, res);
+        //console.log(`Dye quantities (${layer}):`, res);
         return res.x;
     }
 
     findCorrs(): [number, number, number] {
-        const opt = nlopt.Optimize(nlopt.Algorithm.LN_COBYLA, 3);
+        const opt = nlopt.Optimize(nlopt.Algorithm.GN_ISRES, 3);
         const colors = this.testColors().map(([cmy, rgb]) => this.dyesToXyz(this.paperDyes, Matrix.fromArray([cmy])));
+        console.log('Test colors:', colors.map(c => xyzToSrgb(c)).map(c => c.toFlatArray()));
         opt.setMinObjective((x, grad) => {
             const corrs = Matrix.fromArray([
                 [x[0], x[1], x[2]],
@@ -329,12 +343,12 @@ export class Lab {
                 const d = deltaE94Xyz(xyz0, xyz1);
                 s += d*d;
             }
-            console.log('****S:', s);
+            console.log('****S:', s, corrs.show());
             return s;
         }, 1e-10);
         opt.setLowerBounds([...fill(3, -5)]);
-        opt.setUpperBounds([...fill(3, 0)]);
-        const res = opt.optimize([...fill(3, -1.0)]);
+        opt.setUpperBounds([...fill(3, 5)]);
+        const res = opt.optimize([...fill(3, 0.0)]);
         console.log(`Corrs:`, res);
         return res.x;
     }

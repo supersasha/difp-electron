@@ -3,7 +3,7 @@ import { Matrix } from '../matrix';
 import { xyzToSrgb } from '../colors';
 
 export interface RGBColorBoxProps {
-    size: number;
+    size: number | string;
     red: number;
     green: number;
     blue: number;
@@ -17,7 +17,12 @@ export function RGBColorBox(_props: Partial<RGBColorBoxProps>): React.ReactEleme
         green: 0,
         blue: 0,
     };
+
     const props = {...defaultProps, ..._props};
+
+    if (typeof props.size === 'number') {
+        props.size = `${props.size}px`;
+    }
     if (props.rgb instanceof Matrix) {
         props.red = props.rgb.getv(0);
         props.green = props.rgb.getv(1);
@@ -34,7 +39,7 @@ export function RGBColorBox(_props: Partial<RGBColorBoxProps>): React.ReactEleme
 }
 
 export interface XYZColorBoxProps {
-    size: number;
+    size: number | string;
     x: number;
     y: number;
     z: number;

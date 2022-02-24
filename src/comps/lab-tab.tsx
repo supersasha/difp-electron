@@ -18,42 +18,14 @@ import { Slider, Button, Radio, RadioGroup } from '@blueprintjs/core';
 //import 'antd/dist/antd.css';
 
 import { Lab } from '../lab';
+import { ColorSliders } from './color-sliders';
+import { MatrixDisp } from './mtx-disp';
 
 function BlockRow(props): React.ReactElement {
     return (
         <div style={{ display: 'flex' }}>
             { props.children }
         </div>
-    );
-}
-
-interface MatrixDispProps {
-    mtx: Matrix;
-    precision?: number;
-}
-
-function MatrixDisp(props: MatrixDispProps): React.ReactElement {
-    const precision = props.precision || 2;
-    const [nrows, ncols] = props.mtx.shape;
-    const rows = [];
-    for (let r = 0; r < nrows; r++) {
-        const cols = [];
-        for (let c = 0; c < ncols; c++) {
-            cols.push(
-                <td key={c} style={{ padding: '2px', textAlign: 'right'}}>{
-                    props.mtx.get(r, c).toFixed(precision)
-                }</td>);
-        }
-        rows.push(
-            <tr key={r}>{ cols }</tr>
-        );
-    }
-    return (
-        <table>
-            <tbody>
-                { rows }
-            </tbody>
-        </table>
     );
 }
 
@@ -106,7 +78,7 @@ export function LabTab(props) {
     const [ cmy, setCmy ] = useState(Matrix.fromArray([[0, 0, 0]]));
     const [ corr, setCorr ] = useState(Matrix.fromArray([[0, 0, 0]]));
     
-    const lab = Lab.instance();
+    const lab = Lab.instance('lab-tab');
     const h0 = lab.h0;
 
     const xs = Matrix.fromArray([[...linspace(h0-1, 1, 100)]]);
@@ -173,7 +145,13 @@ export function LabTab(props) {
             </Button>
             <BlockRow>
                 <BlockRow>
-                    <CMYSliders cmy={cmy} setCmy={setCmy} />
+                    {/*<CMYSliders cmy={cmy} setCmy={setCmy} />*/}
+                    <ColorSliders
+                        color={cmy}
+                        onChange={setCmy}
+                        upperBounds={[4, 4, 4]}
+                        labels="CMY"
+                    />
                     <div>
                         <XYZColorBox size={150} xyz={xyzOfCmy} />
                         <div>{xyzOfCmy.show()}</div>

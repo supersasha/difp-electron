@@ -38,3 +38,7 @@ export function loadSpectrumData(filename: string): SpectrumData {
     return data;
 }
 
+export function saveSpectrumData(filename: string, sd: SpectrumData): void {
+    const json = JSON.stringify(sd, null, 4);
+    fs.writeFileSync(filename, json);
+}
