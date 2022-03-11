@@ -214,7 +214,7 @@ const throttle = makeThrottle({ deltaMs: 100 });
 
 export function Photo(props: PhotoProps): React.ReactElement {
     const { path, options } = props;
-    const borderWidth = 20;
+    const borderWidth = 0;
     const outerRef = useRef(null);
     const innerRef = useRef(null);
     const darkroomRef = useRef({} as Darkroom);
@@ -268,7 +268,8 @@ export function Photo(props: PhotoProps): React.ReactElement {
     return (
         <div ref={outerRef} style={{
             width: '100%',
-            height: '100vh',
+            height: '100%',
+            flex: '1 1',
         }}>
             <div ref={innerRef} style={{
                 border: `${borderWidth}px solid white`,

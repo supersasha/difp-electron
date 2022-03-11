@@ -3,77 +3,105 @@ import { useState } from 'react';
 import { PhotoTab } from './photo-tab';
 import { TryTab } from './try-tab';
 import { Lab2Tab } from './lab2-tab';
+/*
 import { ProfileTab } from './profile-tab';
 import { DevelopTab } from './develop-tab';
 import { CouplersTab } from './couplers-tab';
+ */
 import { SpectraTab } from './spectra-tab';
 import { LabTab } from './lab-tab';
-import { Tab, Tabs, Box } from '@mui/material';
-//import { TabPanel, TabList, TabContext } from '@mui/lab';
-//import { Once } from './once';
+import { Tabs, TabPanel, TabCaption } from './tabs';
+import { useDispatch, useSelector } from 'react-redux';
+import { Button, Stack } from '@mui/material';
+import { State } from '../store';
+const { dialog, BrowserWindow } = require('electron').remote;
 
-function MyTabPanel(props) {
-    const { name, value, children } = props;
+function toggleDevTools() {
+    try {
+        require('electron').remote.getCurrentWindow().toggleDevTools();
+    } catch(e) {
+        //alert(e);
+    }
+}
+
+function SomeButtons(props): React.ReactElement {
     return (
-        <div style={{
-            display: name === value ? 'block' : 'none',
-            flexGrow: 1,
-            flexShrink: 1,
-            flexBasis: '100px',
-        }}>
-            {children}
+        <div>
+            <Button onClick={toggleDevTools} variant="outlined">Toggle dev tools</Button>
+        </div>
+    );
+}
+
+function PhotoTabCaption(props): React.ReactElement {
+    const { imagePath, index, onSelected } = props;
+    const dispatch = useDispatch();
+    let pathDiv: React.ReactElement;
+    const pathStyle: React.CSSProperties = {
+        overflow: 'hidden',
+        width: '200px',
+        whiteSpace: 'nowrap',
+        textOverflow: 'ellipsis',
+        direction: 'rtl',
+        fontSize: '12px',
+    };
+    pathDiv = (
+        <div style={pathStyle} onClick={() => {
+                const res = dialog.showOpenDialogSync(BrowserWindow.getFocusedWindow(), {
+                    defaultPath: imagePath,
+                    properties: ['openFile'],
+                });
+                if (!res) {
+                    return;
+                }
+                const [path] = res;
+                dispatch({
+                    type: 'main/setImagePath',
+                    payload: path,
+                });
+            }}>
+            {imagePath || 'no image'}
+        </div>
+    );
+    return (
+        <div style={{ display: 'flex', alignItems: 'baseline' }}>
+            <div onClick={ () => onSelected(index) }>Photo</div>
+            {pathDiv}
         </div>
     );
 }
 
 function App(): React.ReactElement {
-    const [tabSelected, setTabSelected] = useState('photo-tab');
-    function handleTabChange(e: React.SyntheticEvent, newValue: string) {
-        void e;
-        setTabSelected(newValue);
-    }
+    const [ selected, setSelected ] = useState(0);
+    const imagePath = useSelector((state: State) => state.imagePath);
+    const onTabSelected = (i: number) => setSelected(i);
     return (
-        <Box sx={{ display: 'flex' }}>
-            <Tabs value={tabSelected} onChange={handleTabChange} orientation="vertical">
-                <Tab label="Photo" value="photo-tab" />
-                <Tab label="Lab2" value="lab2-tab" />
-                <Tab label="Spectra" value="spectra-tab" />
-                <Tab label="Try" value="try-tab" />
-                <Tab label="Lab" value="lab-tab" />
-            </Tabs>
-            <MyTabPanel name="photo-tab" value={tabSelected}>
-                <PhotoTab/>
-            </MyTabPanel>
-            <MyTabPanel name="lab2-tab" value={tabSelected}>
-                <Lab2Tab />
-            </MyTabPanel>
-            <MyTabPanel name="spectra-tab" value={tabSelected}>
-                <SpectraTab />
-            </MyTabPanel>
-            <MyTabPanel name="try-tab" value={tabSelected}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100vh' }}>
+            <div style={{ display: 'flex' }}>
+                <Tabs selected={selected}>
+                    <PhotoTabCaption index={0} onSelected={onTabSelected} imagePath={imagePath}/>
+                    <TabCaption index={1} onSelected={onTabSelected} caption="Lab2" />
+                    <TabCaption index={2} onSelected={onTabSelected} caption="Spectra" />
+                    <TabCaption index={3} onSelected={onTabSelected} caption="Try" />
+                    <TabCaption index={4} onSelected={onTabSelected} caption="Lab" />
+                </Tabs>
+                <SomeButtons imagePath={imagePath}/>
+            </div>
+            <TabPanel index={0} selected={selected}>
+                <PhotoTab imagePath={imagePath} />
+            </TabPanel>
+            <TabPanel index={1} selected={selected}>
+                <Lab2Tab/>
+            </TabPanel>
+            <TabPanel index={2} selected={selected}>
+                <SpectraTab/>
+            </TabPanel>
+            <TabPanel index={3} selected={selected}>
                 <TryTab/>
-            </MyTabPanel>
-            <MyTabPanel name="lab-tab" value={tabSelected}>
+            </TabPanel>
+            <TabPanel index={4} selected={selected}>
                 <LabTab/>
-            </MyTabPanel>
-        </Box>
-
-        /*
-        <Box sx={{ display: 'flex', flexGrow: 1, flexBasis: '100px' }}>
-            <TabContext value={tabSelected}>
-                <TabList onChange={handleTabChange} orientation="vertical">
-                    <Tab label="Photo" value="photo-tab" />
-                    <Tab label="Profile" value="profile-tab" />
-                    <Tab label="Lab" value="lab-tab" />
-                </TabList>
-                <TabPanel value="photo-tab" sx={{ padding: 0 }}>
-                    <Once component={PhotoTab} unit="PhotoTab" />
-                </TabPanel>
-                <TabPanel value="profile-tab"><ProfileTab/></TabPanel>
-                <TabPanel value="lab-tab"><LabTab/></TabPanel>
-            </TabContext>
-        </Box>
-        */
+            </TabPanel>
+        </div>
     );
 }
 

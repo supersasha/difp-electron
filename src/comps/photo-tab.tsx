@@ -1,66 +1,24 @@
 import * as React from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-//import { Slider } from 'antd';
-// import { Slider } from '@blueprintjs/core';
-//import { RawPhotoFileLoader, FilmProcessor } from './photo';
 import { Photo } from './photo';
-const { dialog, BrowserWindow } = require('electron').remote;
 import { State } from '../store';
-//import { Button } from '@blueprintjs/core';
-import { Button, Slider, Stack } from '@mui/material';
+import { Slider } from '@mui/material';
+import { useDispatch, useSelector } from 'react-redux';
 
-//import 'antd/dist/antd.css';
-
-function toggleDevTools() {
-    try {
-        require('electron').remote.getCurrentWindow().toggleDevTools();
-    } catch(e) {
-        //alert(e);
-    }
-}
-
-export function PhotoTab(): React.ReactElement {
+export function PhotoTab(props): React.ReactElement {
+    const { imagePath } = props;
     const dispatch = useDispatch();
-    const imagePath = useSelector((state: State) => state.imagePath);
     const userOptions = useSelector((state: State) => state.userOptions);
 
     return (
         <>
-            <div style={{display: 'flex', width: '100%'}}>
-                {/*<RawPhotoFileLoader path={imagePath} processor={FilmProcessor} />*/}
+            <div style={{ display: 'flex', width: '100%', height: '100%' }}>
                 <Photo path={imagePath} options={userOptions}/>
-                <div style={{backgroundColor: '#eee', padding: '20px'}}>
-                    <div>
-                        <div style={{
-                            overflow: 'hidden',
-                            width: '350px',
-                            whiteSpace: 'nowrap',
-                            textOverflow: 'ellipsis',
-                            direction: 'rtl'
-                        }}>{imagePath || 'No image loaded'}</div>
-                        <Stack direction="row" spacing={1}>
-                            <Button onClick={toggleDevTools} variant="outlined">Toggle dev tools</Button>
-                            <Button onClick={() => {
-                                const res = dialog.showOpenDialogSync(BrowserWindow.getFocusedWindow(), {
-                                    defaultPath: imagePath,
-                                    properties: ['openFile'],
-                                });
-                                if (!res) {
-                                    return;
-                                }
-                                const [path] = res;
-                                dispatch({
-                                    type: 'main/setImagePath',
-                                    payload: path,
-                                });
-                            }} variant="contained">Load image</Button>
-                        </Stack>
-                    </div>
+                <div style={{ padding: '30px', flex: '0 0 500px'}}>
                     <div>
                         <div>Red &#x2194; Cyan</div>
                         <Slider
                             min={0}
-                            max={3}
+                            max={0.3}
                             step={0.001}
                             value={userOptions.colorCorr[0]}
                             valueLabelDisplay="auto"
@@ -74,7 +32,7 @@ export function PhotoTab(): React.ReactElement {
                         <div>Green &#x2194; Magenta</div>
                         <Slider
                             min={0}
-                            max={3}
+                            max={0.3}
                             step={0.001}
                             value={userOptions.colorCorr[1]}
                             valueLabelDisplay="auto"
@@ -88,7 +46,7 @@ export function PhotoTab(): React.ReactElement {
                         <div>Blue &#x2194; Yellow</div>
                         <Slider
                             min={0}
-                            max={3}
+                            max={0.3}
                             step={0.001}
                             value={userOptions.colorCorr[2]}
                             valueLabelDisplay="auto"

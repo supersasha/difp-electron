@@ -67,7 +67,10 @@ export function Plot(_props: Partial<Omit<PlotProps, 'plots'> & { plots: Partial
         const width = ctx.canvas.width;
         const height = ctx.canvas.height;
         const marg = props.plotMargin;
-        ctx.clearRect(0, 0, width, height);
+        //ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = 'black';
         ctx.strokeRect(
             marg + 0.5, marg + 0.5,
             width - 2*marg, height - 2*marg

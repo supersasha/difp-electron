@@ -5,6 +5,12 @@
 }
 */
 
+/*
+body {
+    background-color: #1d2323;
+}
+*/
+
 .tab-wide {
     flex-grow: 1;
     flex-basis: 100px;
