@@ -11,7 +11,8 @@
   },
   "scripts": {
     "start": "webpack serve",
-    "electron": "electron .",
+    "app": "electron .",
+    "app-dev-tools": "electron . --dev-tools",
     "create": "webpack",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

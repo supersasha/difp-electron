@@ -6,45 +6,6 @@ import * as nlopt from 'nlopt-js';
 import { SpectrumData, saveSpectrumData } from './data';
 import { nmf } from './nmf';
 
-/*
-
-Warning: incorrect, don't use!
-
-export const A_1931_64_400_700_10nm = Matrix.fromArray([
-    [ 0.0191097, 0.0020044, 0.0860109 ],
-    [ 0.084736, 0.008756, 0.389366 ],
-    [ 0.204492, 0.021391, 0.972542 ],
-    [ 0.314679, 0.038676, 1.55348 ],
-    [ 0.383734, 0.062077, 1.96728 ],
-    [ 0.370702, 0.089456, 1.9948 ],
-    [ 0.302273, 0.128201, 1.74537 ],
-    [ 0.195618, 0.18519, 1.31756 ],
-    [ 0.080507, 0.253589, 0.772125 ],
-    [ 0.016172, 0.339133, 0.415254 ],
-    [ 0.003816, 0.460777, 0.218502 ],
-    [ 0.037465, 0.606741, 0.112044 ],
-    [ 0.117749, 0.761757, 0.060709 ],
-    [ 0.236491, 0.875211, 0.030451 ],
-    [ 0.376772, 0.961988, 0.013676 ],
-    [ 0.529826, 0.991761, 0.003988 ],
-    [ 0.705224, 0.99734, 0 ],
-    [ 0.878655, 0.955552, 0 ],
-    [ 1.01416, 0.868934, 0 ],
-    [ 1.11852, 0.777405, 0 ],
-    [ 1.12399, 0.658341, 0 ],
-    [ 1.03048, 0.527963, 0 ],
-    [ 0.856297, 0.398057, 0 ],
-    [ 0.647467, 0.283493, 0 ],
-    [ 0.431567, 0.179828, 0 ],
-    [ 0.268329, 0.107633, 0 ],
-    [ 0.152568, 0.060281, 0 ],
-    [ 0.0812606, 0.0318004, 0 ],
-    [ 0.0408508, 0.0159051, 0 ],
-    [ 0.0199413, 0.0077488, 0 ],
-    [ 0.00957688, 0.00371774, 0 ],
-]).transpose();
-*/
-
 function colorMatchingG(x: number, mu: number, sigma1: number, sigma2: number): number {
     const dx = x - mu;
     if (x < mu) {
@@ -83,7 +44,6 @@ export function colorMatchingMatrix(): Matrix {
 }
 
 export const COLOR_MATCHING_MTX = colorMatchingMatrix();
-export const A_1931_64_400_700_10nm = COLOR_MATCHING_MTX; // obsolete, don't use
 
 const D_S0 = Matrix.fromArray([[
      94.80, 104.80, 105.90,  96.80, 113.90, 125.60, 125.50, 121.30, 121.30, 113.50,
@@ -169,10 +129,7 @@ export function logExposure(logsense: Matrix, sp: Matrix): Matrix {
 export function normalizedSense(logsense: Matrix, light: Matrix): Matrix {
     const E = exposure(logsense, light);
     const theta = E.map(e => -log10(e));
-    //console.log('theta:', theta);
     const normSense = logsense.rowWise((s, t) => s + t, theta);
-    //console.log('Exposure with normalized sense:', exposure(normSense, light.map(e => e * 10)));
-    //console.log('logExposure with normalized sense:', logExposure(normSense, light));
     return normSense;
 }
 
@@ -180,8 +137,8 @@ export function normalizedSense(logsense: Matrix, light: Matrix): Matrix {
 // ?? will give the XYZ color.
 // ?? It is assumed that the light gives white color of maximum intensity.
 export function transmittanceToXyzMtx(light: Matrix): Matrix {
-    const N = A_1931_64_400_700_10nm.row(1).dot(light);
-    return A_1931_64_400_700_10nm.colWise((a, l) => a * l, light.map(l => 100 / N * l));
+    const N = COLOR_MATCHING_MTX.row(1).dot(light);
+    return COLOR_MATCHING_MTX.colWise((a, l) => a * l, light.map(l => 100 / N * l));
 }
 
 export function reflectanceUnderLightSource(refl: Matrix, light: Matrix): Matrix {
@@ -190,7 +147,7 @@ export function reflectanceUnderLightSource(refl: Matrix, light: Matrix): Matrix
 }
 
 export function whitePoint(ill: Matrix): Matrix {
-    const xyz = A_1931_64_400_700_10nm.mmul(ill.transpose()); 
+    const xyz = COLOR_MATCHING_MTX.mmul(ill.transpose()); 
     return chromaticity(xyz);
 }
 

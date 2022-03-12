@@ -12,9 +12,11 @@ function createWindow () {
         },
         icon: path.join(__dirname, 'assets/icons/png/256x256.png'),
     });
-    win.webContents.openDevTools();
+    if (process.argv[2] === '--dev-tools') {
+        win.webContents.openDevTools();
+    }
     win.removeMenu();
-    //win.loadFile('index.html');
+    win.maximize();
     win.loadURL('http://localhost:8033');
 }
 
