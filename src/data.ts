@@ -13,6 +13,27 @@ export interface Datasheet {
     dyes: Matrix;  // 3x31
 }
 
+export interface SpectralBasisJson {
+    basis: number[][]; // 3x31
+}
+
+export interface SpectralBasis {
+    basis: Matrix; // 3x31
+}
+
+export function loadSpectralBasis(filename: string): SpectralBasis {
+    const json = fs.readFileSync(filename, { encoding: 'utf8' });
+    const data = JSON.parse(json);
+    return {
+        basis: Matrix.fromArray(data.basis)
+    };
+}
+
+export function saveSpectralBasis(filename: string, basis: SpectralBasis): void {
+    const json = JSON.stringify({ basis: basis.basis.toArray() }, null, 4);
+    fs.writeFileSync(filename, json);
+}
+
 export function loadDatasheet(filename: string): Datasheet {
     const json = fs.readFileSync(filename, { encoding: 'utf8' });
     const data = JSON.parse(json);

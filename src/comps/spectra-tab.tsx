@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState, useRef, useMemo } from 'react';
 import { Matrix } from '../matrix';
-import { Button, Slider } from '@mui/material';
+import { Button, Slider, TextField } from '@mui/material';
 
 import { ColorSliders } from './color-sliders';
 import { RGBColorBox, XYZColorBox } from './colorbox';
@@ -15,11 +15,11 @@ import {
     reflectanceUnderLightSource,
     transmittanceToXyzMtx,
     ReflGen,
-    generateSpectrumData
+    generateSpectrumData,
+    COLOR_MATCHING_MTX,
 } from '../spectrum';
-import { loadSpectrumData, saveSpectrumData } from '../data';
 
-import { nmf } from '../nmf';
+import { loadSpectrumData, saveSpectrumData, saveSpectralBasis } from '../data';
 
 import * as fs from 'fs';
 
@@ -123,11 +123,15 @@ function findOptReflGen() {
     }
 }
 
+function findNewReflGen(light: Matrix, refls: Matrix[]): ReflGen {
+    const sd = generateSpectrumData(refls, light);
+    return new ReflGen(sd);
+}
+
 let lastDelta = 0;
 
-function closeToColor(xyz: Matrix, tol: number) {
-    const d65 = daylightSpectrum(6500);
-    const mtx = transmittanceToXyzMtx(d65).transpose();
+function closeToColor(xyz: Matrix, light: Matrix, tol: number) {
+    const mtx = transmittanceToXyzMtx(light).transpose();
     return function(refl: Matrix): boolean {
         const xyz1 = refl.mmul(mtx);
         const d = deltaE94Xyz(xyz, xyz1);
@@ -136,9 +140,8 @@ function closeToColor(xyz: Matrix, tol: number) {
     };
 }
 
-function closeToChroma(xyz: Matrix, tol: number) {
-    const d65 = daylightSpectrum(6500);
-    const mtx = transmittanceToXyzMtx(d65).transpose();
+function closeToChroma(xyz: Matrix, light: Matrix, tol: number) {
+    const mtx = transmittanceToXyzMtx(light).transpose();
     const xy = chromaticity(xyz);
     return function(refl: Matrix): boolean {
         const xyz1 = refl.mmul(mtx);
@@ -150,22 +153,269 @@ function closeToChroma(xyz: Matrix, tol: number) {
     };
 }
 
+interface LightSourceSpectrumAndColorProps {
+    daylightTemp: number;
+}
+
+function LightSourceSpectrumAndColor(props: LightSourceSpectrumAndColorProps): React.ReactElement {
+    const { daylightTemp } = props;
+    
+    const light = daylightSpectrum(daylightTemp);
+    const coef = COLOR_MATCHING_MTX.row(1).dot(light);
+    const xyzOfLight = light.mmul(COLOR_MATCHING_MTX.transpose()).mul(100 / coef);
+
+    return (
+        <div style={{ flex: '1 1 100px', display: 'flex' }}>
+            <Spectrum31Plot
+                data={[{
+                    ys: light.toFlatArray(),
+                    style: 'black',
+                }]}
+                containerStyle={{
+                    width: '600px',
+                    height: '400px'
+                }}
+                title="Light source spectrum"
+                yrange={[0, 170]}
+                ymarks={18}
+            />
+            <XYZColorBox
+                xyz={xyzOfLight}
+                size="400px"
+            />
+        </div>
+    );
+}
+
+interface SRGBPickerProps {
+    srgb: Matrix;
+    onChange: (srgb: Matrix) => void;
+}
+
+function SRGBPicker(props: SRGBPickerProps): React.ReactElement {
+    const { srgb, onChange } = props;
+    return (
+        <>
+            <div>
+                Color (srgb):
+            </div>
+            <div style={{ display: 'flex'}}>
+                <ColorSliders
+                    labels={['sRed', 'sGreen', 'sBlue']}
+                    color={srgb}
+                    onChange={onChange}
+                />
+                <div className="lab2item">
+                    <RGBColorBox rgb={srgb} size="150px"/>
+                </div>
+            </div>
+        </>
+    );
+}
+
+interface LightSourceControlsProps {
+    daylightTemp: number;
+    onChange: (temp: number) => void;
+}
+
+function LightSourceControls(props: LightSourceControlsProps): React.ReactElement {
+    const { daylightTemp, onChange } = props;
+    return (
+        <>
+            <div>
+                Light source:
+            </div>
+            <div style={{ width: '350px' }}>
+                <Slider
+                    min={4000}
+                    max={10000}
+                    step={100}
+                    value={daylightTemp}
+                    onChange={(_event, value) => {
+                        onChange(value as number);
+                    }}
+                    marks={[
+                        {
+                            value: 5000,
+                            label: 'D50'
+                        },
+                        {
+                            value: 5500,
+                            label: 'D55'
+                        },
+                        {
+                            value: 6500,
+                            label: 'D65'
+                        },
+                        {
+                            value: 7500,
+                            label: 'D75'
+                        },
+                    ]}
+                    valueLabelDisplay="on"
+                />
+            </div>
+        </>
+    );
+}
+
+interface ReflGenOptControlsProps {
+    iterations: string;
+    reflGen: ReflGen | undefined;
+    light: Matrix;
+    onIterationsChange: (its: string) => void;
+    onReflGenChange: (reflGen: ReflGen) => void;
+}
+
+function ReflGenOptControls(props: ReflGenOptControlsProps): React.ReactElement {
+    const {
+        iterations,
+        reflGen,
+        onIterationsChange,
+        onReflGenChange,
+        light,
+    } = props;
+    return (
+        <div>
+            <div>
+                ReflGen Optimizer:
+            </div>
+            <div style={{ marginTop: '10px' }}>
+                <TextField
+                    label="Number of iterations"
+                    variant="outlined"
+                    value={iterations}
+                    onChange={(event: any) => { onIterationsChange(event.target.value); }}
+                />
+            </div>
+            <div>
+                <Button onClick={() => {
+                    const iters = parseInt(iterations);
+                    if (isNaN(iters)) {
+                        return;
+                    }
+                    let minErr = reflGen ? reflGenError(reflGen) : Infinity;
+                    let optReflGen = reflGen;
+
+                    for (let i = 0; i < iters; i++) {
+                        try {
+                            const refls = [
+                                reflDb.getRefl(Math.trunc(Math.random() * reflDb.getSize())),
+                                reflDb.getRefl(Math.trunc(Math.random() * reflDb.getSize())),
+                                reflDb.getRefl(Math.trunc(Math.random() * reflDb.getSize())),
+                            ];
+                            const newReflGen = findNewReflGen(light, refls);
+                            const err = reflGenError(newReflGen);
+                            if (err < minErr) {
+                                optReflGen = newReflGen; 
+                                minErr = err;
+                                console.log(`Achieved min at the ${i}th iteration`);
+                                break;
+                            }
+                        } catch(e) {
+                            console.error(e);
+                        }
+                    }
+                    onReflGenChange(optReflGen);
+                }}>Run iterations</Button>
+            </div>
+            <div>
+                <Button onClick={() => {
+                    if (!reflGen) {
+                        return;
+                    }
+                    saveSpectralBasis('./data/spectral-bases/opt-spectral-basis.json', {
+                        basis: reflGen.getBase().transpose()
+                    });
+                }}>Save</Button>
+            </div>
+        </div>
+    );
+}
+
+/*
 const spectrumFile =
     "./data/spectrum-d55-4.json";
 const spectrumData = loadSpectrumData(spectrumFile);
 const reflGen = new ReflGen(spectrumData);
+ */
 
 export function SpectraTab(props): React.ReactElement {
     const [ srgb, setSrgb ] = useState(Matrix.fromArray([[0, 0, 0]]));
+    /*
     const [ index, setIndex ] = useState(0);
     const [ basisRadius, setBasisRadius ] = useState(0.1);
+     */
     const [ newReflGen, setNewReflGen ] = useState(undefined);
+    const [ daylightTemp, setDaylightTemp ] = useState(6500);
+    const [ iterations, setIterations] = useState("0");
 
     const xyz = srgbToXyz(srgb);
+    /*
     const d55 = daylightSpectrum(5500);
     const d65 = daylightSpectrum(6500);
-    const xyzOfRefl = reflectanceUnderLightSource(reflDb.getRefl(index), d65);
+    const xyzOfRefl = reflectanceUnderLightSource(reflDb.getReflStretched(index), d65);
+     */
+    const light = daylightSpectrum(daylightTemp);
 
+    const minErr = newReflGen ? reflGenError(newReflGen) : Infinity;
+    return (
+        <div style={{ display: 'flex'}}>
+            <div style={{ flex: '1 1 100px' }}>
+                <LightSourceSpectrumAndColor daylightTemp={daylightTemp} />
+                <div>Min err: {minErr}</div>
+                <div>
+                    {
+                        newReflGen ? (
+                            <div className="lab2item">
+                                <SpectrumGenerator
+                                    xyz={xyz}
+                                    reflGen={newReflGen}
+                                />
+                            </div>) : undefined
+                    }
+                </div>
+                <div>
+                    { newReflGen ? (<Spectrum31Plot
+                        data={[{
+                            ys: newReflGen.getBase().transpose().row(0).toFlatArray(),
+                            style: 'red',
+                        }, {
+                            ys: newReflGen.getBase().transpose().row(1).toFlatArray(),
+                            style: 'green',
+                        }, {
+                            ys: newReflGen.getBase().transpose().row(2).toFlatArray(),
+                            style: 'blue',
+                        }]}
+                        containerStyle={{
+                            width: '600px',
+                            height: '400px'
+                        }}
+                        title="New reflection generator base"
+                        yrange={[-0.1, 1.3]}
+                        ymarks={15}
+                    />) : undefined }
+                </div>
+            </div>
+            <div style={{ flex: '0 0 500px'}}>
+                <SRGBPicker srgb={srgb} onChange={setSrgb} />
+                <LightSourceControls daylightTemp={daylightTemp} onChange={setDaylightTemp} />
+                <div style={{ marginTop: '15px'}}>
+                    <ReflGenOptControls
+                        reflGen={newReflGen}
+                        iterations={iterations}
+                        light={light}
+                        onIterationsChange={setIterations}
+                        onReflGenChange={(rg: ReflGen) => {
+                            setNewReflGen(rg);
+                        }}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+
+    /*
     const chromeDist = useMemo(() => {
         const xys = reflDb.getChromaticities(d65);
         const rx = xys.row(0).toFlatArray();
@@ -189,7 +439,8 @@ export function SpectraTab(props): React.ReactElement {
             ymarks={10}
         />);
     }, []);
-
+     */
+/*
     return (
         <div>
             <div className="lab2cont">
@@ -304,36 +555,8 @@ export function SpectraTab(props): React.ReactElement {
                 </div>
                 <div className="lab2item">
                     <Button onClick={() => {
-                        setIndex(nextFilteredRefl(index, closeToChroma(xyz, 0.005)));
+                        setIndex(nextFilteredRefl(index, closeToChroma(xyz, basisRadius)));
                     }}>Next filtered</Button>
-                </div>
-                <div className="lab2item">
-                    <Button onClick={() => {
-                        /*
-                        const n = 3;
-                        const m = 3;
-                        const f = 2;
-                        const v = Matrix.random([n, m]).mul(100);
-                        const r = nmf(v, f);
-                        console.log('NMF:', r.iter, v.sub(r.w.mmul(r.h)).norm1() / n / m);
-                        console.log(v.show(4));
-                        console.log(r.w.mmul(r.h).show(4));
-                        console.log(v.sub(r.w.mmul(r.h)).norm1());
-                         */
-                        const a: Matrix[] = [];
-                        const n = 500;
-                        const m = 31;
-                        const f = 3;
-                        for (let i = 0; i < n; i++) {
-                            a.push(reflDb.getRefl(i));
-                        }
-                        const v = Matrix.fromRows(a);
-                        const r = nmf(v, f);
-                        console.log('NMF:', r.iter, v.sub(r.w.mmul(r.h)).norm1() / n / m);
-                        console.log(v.show(4));
-                        console.log(r.w.mmul(r.h).show(4));
-                        console.log(v.sub(r.w.mmul(r.h)).norm1());
-                    }}>NMF</Button>
                 </div>
             </div>
             <div className="lab2cont">
@@ -356,11 +579,14 @@ export function SpectraTab(props): React.ReactElement {
                     <XYZColorBox xyz={xyzOfRefl} size="200px"/>
                 </div>
             </div>
+            {/*
             <div className="lab2cont">
                 <div className="lab2item">
                     {chromeDist}
                 </div>
             </div>
+              * /}
         </div>
     );
+*/
 }

@@ -29,6 +29,12 @@ class ReflDB {
         return this.data[index];
     }
 
+    getReflStretched(index: number): Matrix {
+        const refl = this.getRefl(index);
+        const max = refl.reduce((acc, e) => e > acc ? e : acc, 0.0001);
+        return refl.mul(1/max);
+    }
+
     getSize(): number {
         return this.length;
     }

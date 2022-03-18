@@ -205,9 +205,9 @@ export function normalizedDyes(dyes: Matrix, light: Matrix, density: number): Ma
 }
 
 export class ReflGen {
-    private triToVMtx: Matrix;
-    private base: Matrix;
-    private light: Matrix;
+    private triToVMtx: Matrix; // 3x3
+    private base: Matrix; // 31x3
+    private light: Matrix; // 1x31
 
     constructor(spectrumData: SpectrumData) {
         this.triToVMtx = Matrix.fromArray(spectrumData.tri_to_v_mtx);
@@ -251,11 +251,12 @@ export class ReflGen {
 
 export function generateSpectrumData(refls: Matrix[], light: Matrix): SpectrumData {
     const rsMtx = Matrix.fromRows(refls); // rsMtx(n x 31) = w(n x 3) * h(3 x 31)
-    const { h } = nmf(rsMtx, 3);
+    //const { h } = nmf(rsMtx, 3);
     const k = 100.0;
     const n = light.dot(COLOR_MATCHING_MTX.row(1));
     const a = COLOR_MATCHING_MTX.colWise(mul, light).mul(k / n); // 3x31
-    const base = h.transpose(); // 31 x 3
+    //const base = h.transpose(); // 31 x 3
+    const base = rsMtx.transpose();
     const triToVMtx = a.mmul(base).inv3x3();
     return {
         wp: [], // should be white point xy, but unused

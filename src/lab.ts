@@ -88,42 +88,19 @@ export class Lab {
         this.filmDyes = normalizedDyes(this.filmDs.dyes, this.projLight, 1.0);
         this.paperDyes = normalizedDyes(this.paperDs.dyes, this.reflLight, 1.0);
 
-        /*
-        // gamma[x, y],
-        // where x - sensor, //segment
-        //       y - layer
-        this.filmGammas = Matrix.fromArray([
-            [ -0.8447,  0.1581,  0.0921 ],
-            [  0.1256, -1.0433,  0.1668 ],
-            [ -0.0122,  0.1356, -1.0807 ],
-        ]).transpose().map(neg).rowWise(div, this.paperGammas);
-        */
-
         this.gammas = this.findGammas();
-        // filmGammas.get(sensor, layer)
         this.filmGammas = this.gammas/*.map(neg)*/.rowWise(div, this.paperGammas);
-
-        //console.log('film gammas:', this.filmGammas.show(4));
 
         const qs = [];
         for (let layer = 0; layer < 3; layer++) {
             qs.push(this.findDyeQuantities(layer, this.h0));
         }
         this.qs = Matrix.fromArray(qs);
-        //console.log('qs:', this.qs.show());
-        /*
-        this.filmDyesQ = this.filmDyes.rowWise(mul, Matrix.fromArray([[
-            this.qs.get(0, 0),
-            this.qs.get(1, 1),
-            this.qs.get(2, 2),
-        ]]));
-        */
         this.couplers = Matrix.fromArray([
             this.filmDyes.row(1).mul(this.qs.get(0, 1)).add(this.filmDyes.row(2).mul(this.qs.get(0, 2))).toFlatArray(),
             this.filmDyes.row(0).mul(this.qs.get(1, 0)).add(this.filmDyes.row(2).mul(this.qs.get(1, 2))).toFlatArray(),
             this.filmDyes.row(0).mul(this.qs.get(2, 0)).add(this.filmDyes.row(1).mul(this.qs.get(2, 1))).toFlatArray(),
         ]);
-        //console.log('Couplers:', this.couplers);
         this.chiFilm = [
             new Chi(this.h0, 0, 0, this.qs.get(0, 0)),
             new Chi(this.h0, 0, 0, this.qs.get(1, 1)),
@@ -134,16 +111,6 @@ export class Lab {
             Chi.to(0, 4, this.paperGammas.getv(1), 0),
             Chi.to(0, 4, this.paperGammas.getv(2), 0),
         ];
-        //console.log('Chi paper:', this.chiPaper);
-
-        const rgb0 = Matrix.fromArray([[0.1, 0.1, 0.1]]);
-        const xyz0 = srgbToXyz(rgb0);
-        const xyz1 = this.develop(xyz0, Matrix.fromArray([[-0.20, -0.65, -0.44]])); 
-                                    //Matrix.fromArray([[-0.23, -0.51, -0.35]]));
-                                    //Matrix.fromArray([[-0.2, -0.7, -0.5]]));
-        const rgb1 = xyzToSrgb(xyz1);
-        //console.log(`From XYZ ${xyz0.show()} get ${xyz1.show()}`);
-        //console.log(`From ${rgb0.show()} get ${rgb1.show()}`);
 
         //this.findCorrs();
     }
