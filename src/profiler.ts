@@ -80,7 +80,7 @@ export class Developer {
         this.filmds = loadDatasheet(film_ds_file);
         this.paperds = loadDatasheet(paper_ds_file);
         const spectrum = loadSpectrumData(spectrum_file);
-        this.reflGen = new ReflGen(spectrum);
+        this.reflGen = ReflGen.fromSpectrumData(spectrum);
         this.mtxRefl = transmittanceToXyzMtx(this.reflLight);
         this.mtxReflD55 = transmittanceToXyzMtx(this.devLight);
 

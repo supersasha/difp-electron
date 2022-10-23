@@ -81,11 +81,8 @@ export function LabTab(props) {
     const lab = Lab.instance('lab-tab');
     const h0 = lab.h0;
 
-    const xs = Matrix.fromArray([[...linspace(h0-1, 1, 100)]]);
-
     const spectrumXs = [...linspace(400, 700, 31)];
 
-    const dyeStyles = [ 'cyan', 'magenta', '#cc0' ];
     const couplerStyles = [ 'red', 'green', 'blue' ];
 
     function expos(h, layer, sensor) {

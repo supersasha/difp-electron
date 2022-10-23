@@ -25,6 +25,7 @@ uniform SpectrumData u_spectrumData;
 
 struct ProfileData
 {
+    float h0;
     Arr31 film_sense[3];
     Arr31 film_dyes[3];
     Arr31 paper_sense[3];
@@ -273,7 +274,7 @@ vec4 process_photo(vec4 srgb) {
         return exposure * pow(10.0, u_userOptions.film_exposure);
     }
 
-    vec4 H = log10(exposure); // + u_userOptions.film_exposure + mask;
+    vec4 H = log10(exposure) + u_userOptions.film_exposure; // + u_userOptions.film_exposure + mask;
 
     if (u_userOptions.mode == FILM_NEG_LOG_EXP) {
         return vec4(
@@ -285,9 +286,9 @@ vec4 process_photo(vec4 srgb) {
     }
     
     vec4 dev = vec4(
-        sigma_constr(H.x, -5.0, 0.0, 0.0, u_profileData.film_max_qs[0], u_userOptions.curve_smoo),
-        sigma_constr(H.y, -5.0, 0.0, 0.0, u_profileData.film_max_qs[1], u_userOptions.curve_smoo),
-        sigma_constr(H.z, -5.0, 0.0, 0.0, u_profileData.film_max_qs[2], u_userOptions.curve_smoo),
+        sigma_constr(H.x, u_profileData.h0, 0.0, 0.0, u_profileData.film_max_qs[0], u_userOptions.curve_smoo),
+        sigma_constr(H.y, u_profileData.h0, 0.0, 0.0, u_profileData.film_max_qs[1], u_userOptions.curve_smoo),
+        sigma_constr(H.z, u_profileData.h0, 0.0, 0.0, u_profileData.film_max_qs[2], u_userOptions.curve_smoo),
         0.0
     );
 

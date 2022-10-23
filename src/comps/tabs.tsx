@@ -54,7 +54,8 @@ export interface TabCaptionProps {
 
 export function TabCaption(props: TabCaptionProps) {
     const { index, caption, onSelected } = props;
+    const style: React.CSSProperties = { whiteSpace: 'nowrap' };
     return (
-        <div onClick={ () => onSelected(index) }>{caption}</div>
+        <div style={style} onClick={ () => onSelected(index) }>{caption}</div>
     );
 }

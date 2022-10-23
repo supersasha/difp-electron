@@ -8,6 +8,8 @@ import { inscribedRect } from '../math';
 
 import * as fs from 'fs';
 import erf from 'math-erf';
+import {loadSpectralBasis} from '../data';
+import { daylightSpectrum, ReflGen } from '../spectrum';
 
 const vertexShaderSource = fs.readFileSync('./shaders/main.vert', { encoding: 'utf8' });
 const fragmentShaderSource = fs.readFileSync('./shaders/main2.frag', { encoding: 'utf8' });
@@ -18,8 +20,10 @@ const blurFragmentShader = fs.readFileSync('./shaders/blur.frag', { encoding: 'u
 const noiseVertexShader = fs.readFileSync('./shaders/noise.vert', { encoding: 'utf8' });
 const noiseFragmentShader = fs.readFileSync('./shaders/noise.frag', { encoding: 'utf8' });
 
-const spectrumData = JSON.parse(fs.readFileSync('./data/spectrum-d55-4.json', { encoding: 'utf8' }));
-const profileData = JSON.parse(fs.readFileSync('./data/new-profile.json', { encoding: 'utf8' }));
+const spectrumData = ReflGen.fromBasisAndLight(loadSpectralBasis('./data/spectral-bases/opt-spectral-basis.json'), daylightSpectrum(6500)).getSpectrumData();
+//const spectrumData = JSON.parse(fs.readFileSync('./data/spectrum-d55-4.json', { encoding: 'utf8' }));
+const profileData = JSON.parse(fs.readFileSync('./data/profiles/profile.json', { encoding: 'utf8' }));
+//const profileData = JSON.parse(fs.readFileSync('./data/new-profile.json', { encoding: 'utf8' }));
 //const profileData = JSON.parse(fs.readFileSync('./data/b29-50d.json', { encoding: 'utf8' }));
 //const profileData = JSON.parse(fs.readFileSync('./data/prof1.json', { encoding: 'utf8' }));
 
@@ -166,7 +170,7 @@ function drawPhoto(gl: WebGL2RenderingContext, darkroom: Darkroom, userOptions: 
 
     mainProg.setUniform('u_mask', fbMask.texture);
     mainProg.setUniform('u_noise', fbNoise.texture);
-    mainProg.setUniform('u_userOptions.mode', integer(10));
+    mainProg.setUniform('u_userOptions.mode', userOptions.raw ? integer(2) : integer(10));
     mainProg.run();
 
     fbTmp.dispose();

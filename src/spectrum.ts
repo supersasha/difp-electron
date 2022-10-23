@@ -3,7 +3,7 @@ import { log10, mul } from './math';
 import { chromaticity } from './colors';
 import * as nlopt from 'nlopt-js';
 
-import { SpectrumData, saveSpectrumData } from './data';
+import { SpectrumData, saveSpectrumData, SpectralBasis } from './data';
 import { nmf } from './nmf';
 
 function colorMatchingG(x: number, mu: number, sigma1: number, sigma2: number): number {
@@ -176,9 +176,14 @@ export function dyeDensity(dyes: Matrix, light: Matrix, qs: Matrix): number {
     return Math.log(r) / Math.LN10;
 }
 
+export interface NormalizeDyesResult {
+    dyes: Matrix; // 3x31
+    err: number;
+}
+
 // Returns quantities of dyes so that the light transmitted or reflected
 // from the dyes would create neutral (gray) color of the given density
-export function normalizedDyesQs(dyes: Matrix, light: Matrix, density: number): Matrix {
+function normalizeDyesQs(dyes: Matrix, light: Matrix, density: number): [Matrix, number] {
     const trMtx = transmittanceToXyzMtx(light);
     const wp = whitePoint(light);
     const opt = nlopt.Optimize(nlopt.Algorithm.LN_PRAXIS, 3);
@@ -196,12 +201,20 @@ export function normalizedDyesQs(dyes: Matrix, light: Matrix, density: number): 
     opt.setLowerBounds([0, 0, 0]);
     opt.setUpperBounds([7, 7, 7]);
     const optRes = opt.optimize([0, 0, 0]);
-    return Matrix.fromArray([optRes.x]);
+    return [Matrix.fromArray([optRes.x]), optRes.value];
 }
 
-export function normalizedDyes(dyes: Matrix, light: Matrix, density: number): Matrix {
-    const qs = normalizedDyesQs(dyes, light, density);
-    return dyes.rowWise((d, q) => d * q, qs);
+export function normalizeDyes(dyes: Matrix, light: Matrix, density: number): NormalizeDyesResult {
+    const [qs, value] = normalizeDyesQs(dyes, light, density);
+    return {
+        dyes: dyes.rowWise((d, q) => d * q, qs),
+        err: value
+    };
+}
+
+export function normalizedDyes(dyes0: Matrix, light: Matrix, density: number): Matrix {
+    const { dyes } = normalizeDyes(dyes0, light, density);
+    return dyes;
 }
 
 export class ReflGen {
@@ -209,10 +222,38 @@ export class ReflGen {
     private base: Matrix; // 31x3
     private light: Matrix; // 1x31
 
+    /*
     constructor(spectrumData: SpectrumData) {
         this.triToVMtx = Matrix.fromArray(spectrumData.tri_to_v_mtx);
         this.base = Matrix.fromArray(spectrumData.base).transpose();
         this.light = Matrix.fromArray([spectrumData.light]);
+    }
+    */
+    constructor(basis: Matrix, light: Matrix, triToV: Matrix) {
+        this.triToVMtx = triToV;
+        this.base = basis;
+        this.light = light;
+    }
+
+    static fromSpectrumData(spectrumData: SpectrumData): ReflGen {
+        return new ReflGen(
+            Matrix.fromArray(spectrumData.base).transpose(),
+            Matrix.fromArray([spectrumData.light]),
+            Matrix.fromArray(spectrumData.tri_to_v_mtx),
+        );
+    }
+
+    static fromBasisAndLight(basis: SpectralBasis, light: Matrix): ReflGen {
+        const k = 100.0;
+        const n = light.dot(COLOR_MATCHING_MTX.row(1));
+        const a = COLOR_MATCHING_MTX.colWise(mul, light).mul(k / n); // 3x31
+        const base = basis.basis.transpose();
+        const triToVMtx = a.mmul(base).inv3x3();
+        return new ReflGen(
+            basis.basis.transpose(),
+            light,
+            triToVMtx,   
+        );
     }
 
     spectrumOf(xyz: Matrix, light?: Matrix): Matrix {
@@ -238,14 +279,17 @@ export class ReflGen {
         return this.light;
     }
 
-    save(filename: string): void {
-        const spectrumData: SpectrumData = {
+    getSpectrumData(): SpectrumData {
+        return {
             wp: [],
             light: this.light.toFlatArray(),
             base: this.base.transpose().toArray(),
             tri_to_v_mtx: this.triToVMtx.toArray()
         };
-        saveSpectrumData(filename, spectrumData);
+    }
+
+    save(filename: string): void {
+        saveSpectrumData(filename, this.getSpectrumData());
     }
 }
 

@@ -12,6 +12,7 @@ export interface UserOptions {
     maskDensity: number;
     noiseSigma: number;
     noiseBlur: number;
+    raw: boolean;
 }
 
 export interface State {
@@ -32,6 +33,7 @@ const initialState: State = {
         maskDensity: 0.0,
         noiseSigma: 0.0, //0.01,
         noiseBlur: 0.046,
+        raw: false,
     },
 };
 

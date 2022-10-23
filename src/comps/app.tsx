@@ -12,8 +12,9 @@ import { SpectraTab } from './spectra-tab';
 import { LabTab } from './lab-tab';
 import { Tabs, TabPanel, TabCaption } from './tabs';
 import { useDispatch, useSelector } from 'react-redux';
-import { Button, Stack } from '@mui/material';
+import { Button } from '@mui/material';
 import { State } from '../store';
+import {ProfileBuilderTab} from './profile-builder-tab';
 const { dialog, BrowserWindow } = require('electron').remote;
 
 function toggleDevTools() {
@@ -79,10 +80,11 @@ function App(): React.ReactElement {
             <div style={{ display: 'flex' }}>
                 <Tabs selected={selected}>
                     <PhotoTabCaption index={0} onSelected={onTabSelected} imagePath={imagePath}/>
-                    <TabCaption index={1} onSelected={onTabSelected} caption="Lab2" />
-                    <TabCaption index={2} onSelected={onTabSelected} caption="Spectra" />
-                    <TabCaption index={3} onSelected={onTabSelected} caption="Try" />
-                    <TabCaption index={4} onSelected={onTabSelected} caption="Lab" />
+                    <TabCaption index={1} onSelected={onTabSelected} caption="Spectra" />
+                    <TabCaption index={2} onSelected={onTabSelected} caption="Profile Buider" />
+                    <TabCaption index={3} onSelected={onTabSelected} caption="Lab2" />
+                    <TabCaption index={4} onSelected={onTabSelected} caption="Try" />
+                    <TabCaption index={5} onSelected={onTabSelected} caption="Lab" />
                 </Tabs>
                 <SomeButtons imagePath={imagePath}/>
             </div>
@@ -90,15 +92,18 @@ function App(): React.ReactElement {
                 <PhotoTab imagePath={imagePath} />
             </TabPanel>
             <TabPanel index={1} selected={selected}>
-                <Lab2Tab/>
-            </TabPanel>
-            <TabPanel index={2} selected={selected}>
                 <SpectraTab/>
             </TabPanel>
+            <TabPanel index={2} selected={selected}>
+                <ProfileBuilderTab/>
+            </TabPanel>
             <TabPanel index={3} selected={selected}>
-                <TryTab/>
+                <Lab2Tab/>
             </TabPanel>
             <TabPanel index={4} selected={selected}>
+                <TryTab/>
+            </TabPanel>
+            <TabPanel index={5} selected={selected}>
                 <LabTab/>
             </TabPanel>
         </div>

@@ -22,6 +22,7 @@ import {
 import { loadSpectrumData, saveSpectrumData, saveSpectralBasis } from '../data';
 
 import * as fs from 'fs';
+import {LightSourceControls} from './light-source';
 
 const reflDb = getReflDB();
 
@@ -94,7 +95,7 @@ function findOptReflGen() {
     const oldExists = fs.existsSync(fileName);
     if (oldExists) {
         const sd = loadSpectrumData(fileName);
-        const reflGen = new ReflGen(sd);
+        const reflGen = ReflGen.fromSpectrumData(sd);
         minErr = reflGenError(reflGen);
         console.log('old sd error:', minErr);
     }
@@ -110,7 +111,7 @@ function findOptReflGen() {
         }
 
         const sd = generateSpectrumData(refls, d55);
-        const reflGen = new ReflGen(sd);
+        const reflGen = ReflGen.fromSpectrumData(sd);
         const err = reflGenError(reflGen);
         if (err < minErr) {
             console.log('new sd error:', err);
@@ -125,7 +126,7 @@ function findOptReflGen() {
 
 function findNewReflGen(light: Matrix, refls: Matrix[]): ReflGen {
     const sd = generateSpectrumData(refls, light);
-    return new ReflGen(sd);
+    return ReflGen.fromSpectrumData(sd);
 }
 
 let lastDelta = 0;
@@ -208,52 +209,6 @@ function SRGBPicker(props: SRGBPickerProps): React.ReactElement {
                 <div className="lab2item">
                     <RGBColorBox rgb={srgb} size="150px"/>
                 </div>
-            </div>
-        </>
-    );
-}
-
-interface LightSourceControlsProps {
-    daylightTemp: number;
-    onChange: (temp: number) => void;
-}
-
-function LightSourceControls(props: LightSourceControlsProps): React.ReactElement {
-    const { daylightTemp, onChange } = props;
-    return (
-        <>
-            <div>
-                Light source:
-            </div>
-            <div style={{ width: '350px' }}>
-                <Slider
-                    min={4000}
-                    max={10000}
-                    step={100}
-                    value={daylightTemp}
-                    onChange={(_event, value) => {
-                        onChange(value as number);
-                    }}
-                    marks={[
-                        {
-                            value: 5000,
-                            label: 'D50'
-                        },
-                        {
-                            value: 5500,
-                            label: 'D55'
-                        },
-                        {
-                            value: 6500,
-                            label: 'D65'
-                        },
-                        {
-                            value: 7500,
-                            label: 'D75'
-                        },
-                    ]}
-                    valueLabelDisplay="on"
-                />
             </div>
         </>
     );

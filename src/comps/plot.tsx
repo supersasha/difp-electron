@@ -27,6 +27,7 @@ export interface PlotProps {
     ymarkFormat: string;
     title: string;
     lineWidth: number;
+    titleFont: string;
 }
 
 const defaultPlotSpec: PlotSpec = {
@@ -48,6 +49,7 @@ const defaultProps: PlotProps = {
     ymarkFormat: 'fixed:2',
     title: "Plot",
     lineWidth: 1,
+    titleFont: '16px sans',
 };
 
 export function Plot(_props: Partial<Omit<PlotProps, 'plots'> & { plots: Partial<PlotSpec>[] }>): React.ReactElement {
@@ -75,7 +77,7 @@ export function Plot(_props: Partial<Omit<PlotProps, 'plots'> & { plots: Partial
             marg + 0.5, marg + 0.5,
             width - 2*marg, height - 2*marg
         );
-        ctx.font = '16px sans';
+        ctx.font = props.titleFont; //'16px sans';
         ctx.textAlign = 'center';
         ctx.fillText(props.title, width/2, marg/2);
         let xmin = Infinity;

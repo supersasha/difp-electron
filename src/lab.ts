@@ -57,6 +57,7 @@ export class Lab {
     debugPaperDyes: Matrix = Matrix.empty([0, 0]);
 
     constructor() {
+        const t0 = Date.now();
         this.h0 = -2; // -2 for minimal curvature of gamma curves
         this.inColors = [];
         this.outColors = [];
@@ -73,7 +74,7 @@ export class Lab {
 
         this.filmDs = loadDatasheet(filmDsFile);
         this.paperDs = loadDatasheet(paperDsFile);
-        this.reflGen = new ReflGen(spectrumData);
+        this.reflGen = ReflGen.fromSpectrumData(spectrumData);
 
         this.devLight = daylightSpectrum(5500);
         this.projLight = daylightSpectrum(5500);
@@ -112,6 +113,7 @@ export class Lab {
             Chi.to(0, 4, this.paperGammas.getv(2), 0),
         ];
 
+        console.log('Init Lab time:', Date.now() - t0);
         //this.findCorrs();
     }
 
@@ -236,7 +238,7 @@ export class Lab {
         opt.setLowerBounds([...fill(9, -10)]);
         opt.setUpperBounds([...fill(9,  10)]);
         const res = opt.optimize([...fill(9, 0)]);
-        //console.log('findGammas optimize result:', res);
+        console.log('findGammas optimize result:', res);
         const x = res.x;
         const mtx = Matrix.fromArray([
             [x[0], x[1], x[2]],
@@ -292,7 +294,7 @@ export class Lab {
         opt.setLowerBounds([...fill(3, 0.001)]);
         opt.setUpperBounds([...fill(3, 4)]);
         const res = opt.optimize([...fill(3, 0.1)]);
-        //console.log(`Dye quantities (${layer}):`, res);
+        console.log(`Dye quantities (${layer}):`, res);
         return res.x;
     }
 

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Photo } from './photo';
 import { State } from '../store';
-import { Slider } from '@mui/material';
+import { Slider, Checkbox, FormGroup, FormControlLabel } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 
 export function PhotoTab(props): React.ReactElement {
@@ -15,10 +15,23 @@ export function PhotoTab(props): React.ReactElement {
                 <Photo path={imagePath} options={userOptions}/>
                 <div style={{ padding: '30px', flex: '0 0 500px'}}>
                     <div>
+                        <FormGroup>
+                            <FormControlLabel label="Raw?"
+                                control={<Checkbox
+                                    checked={userOptions.raw}
+                                    onChange={(_e: any, checked: boolean) => {
+                                        dispatch({
+                                            type: 'main/setUserOptions',
+                                            payload: { raw: checked }
+                                        });
+                                    }}
+                                />}
+                            />
+                        </FormGroup>
                         <div>Red &#x2194; Cyan</div>
                         <Slider
                             min={0}
-                            max={0.3}
+                            max={1.3}
                             step={0.001}
                             value={userOptions.colorCorr[0]}
                             valueLabelDisplay="auto"
@@ -32,7 +45,7 @@ export function PhotoTab(props): React.ReactElement {
                         <div>Green &#x2194; Magenta</div>
                         <Slider
                             min={0}
-                            max={0.3}
+                            max={1.3}
                             step={0.001}
                             value={userOptions.colorCorr[1]}
                             valueLabelDisplay="auto"
@@ -46,7 +59,7 @@ export function PhotoTab(props): React.ReactElement {
                         <div>Blue &#x2194; Yellow</div>
                         <Slider
                             min={0}
-                            max={0.3}
+                            max={1.3}
                             step={0.001}
                             value={userOptions.colorCorr[2]}
                             valueLabelDisplay="auto"
@@ -61,7 +74,7 @@ export function PhotoTab(props): React.ReactElement {
                         <Slider
                             min={-5}
                             max={5}
-                            step={0.1}
+                            step={0.001}
                             value={userOptions.filmExposure}
                             valueLabelDisplay="auto"
                             onChange={(e: Event, value: number) => {
@@ -73,8 +86,8 @@ export function PhotoTab(props): React.ReactElement {
                         />
                         <div>Paper Exposure</div>
                         <Slider
-                            min={0.0}
-                            max={0.4}
+                            min={-2.4}
+                            max={1.4}
                             step={0.001}
                             value={userOptions.paperExposure}
                             valueLabelDisplay="auto"
